@@ -1,0 +1,1 @@
+Maajix is a web-based open-source streaming service. The backend that handles the core streaming logic is written in Rust and makes use of cutting-edge tech like the [WebTransport](https://developer.mozilla.org/en-US/docs/Web/API/WebTransport) and the [WebCodecs](https://developer.mozilla.org/en-US/docs/Web/API/WebCodecs_API) APIs.
