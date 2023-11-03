@@ -3,6 +3,14 @@ fn main() {
 }
 
 
+//What I ned to do:
+
+//set up Axum handler that listens for audio and video signals from client and 
+// starts a broadcst
+// must be QUIC/HTTP3
+
+
+
 //maajix is a web-based video streaming service. 
 //Technologies:
 
