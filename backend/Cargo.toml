@@ -8,4 +8,8 @@ edition = "2021"
 [dependencies]
 axum = "0.6.20"
 axum-macros = "0.3.8"
+h3 = "0.0.3"
+h3-quinn = "0.0.4"
+hyper = { version = "0.14.27", features = ["full"] }
+sec-http3 = "0.1.2"
 tokio = { version = "1.33.0", features = ["full"] }
