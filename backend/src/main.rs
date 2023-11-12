@@ -1,7 +1,8 @@
 use std::net::SocketAddr;
 
-
 use axum::{Router, Server, response, Json, routing::get};
+
+mod env;
 
 async fn start_stream() -> response::Json<&'static str> {
    Json("Yay!! WebTransport Connection established!")
@@ -9,10 +10,12 @@ async fn start_stream() -> response::Json<&'static str> {
 
 #[tokio::main]
 async fn main() {
+    let env = env::load();
+
     let app = Router::new()
         .route("/start-stream", get(start_stream));
 
-    let addr = SocketAddr::from(([127, 0 , 0, 1], 8080));
+    let addr = SocketAddr::from(([127, 0 , 0, 1], env.port));
     println!("server started at addr: http://{:?}", addr);
 
     Server::bind(&addr)
