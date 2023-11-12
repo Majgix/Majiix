@@ -9,6 +9,7 @@
     "jsx": "preserve",
     "strict": true,
     "baseUrl": "./",
+    "lib": ["esnext", "dom"],
     "paths": {
       "~/*": ["./src/*"]
     }
