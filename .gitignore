@@ -1,6 +1,7 @@
 /*/target
 /*/dist
 /*/.solid
+/*/media
 
 .env*.local
 
