@@ -1,24 +1,33 @@
 {
-  "name": "frontend",
+  "name": "@majiix/frontend",
+  "version": "0.1.0",
+  "license": "UNLICENSED",
   "scripts": {
-    "dev": "solid-start dev",
     "build": "solid-start build",
-    "start": "solid-start start"
+    "check": "solid-start build",
+    "dev": "solid-start dev",
+    "fmt": "prettier --cache --write --ignore-unknown --ignore-path ../.prettierignore .",
+    "fmt:check": "prettier --check --ignore-unknown --no-color --ignore-path ../.prettierignore .",
+    "lint": "",
+    "lint:fix": "",
+    "start": "solid-start start",
+    "test": ""
   },
   "type": "module",
   "dependencies": {
-    "@solidjs/meta": "^0.29.1",
-    "@solidjs/router": "^0.8.3",
-    "solid-js": "^1.8.5",
-    "solid-start": "^0.3.9"
+    "@solidjs/meta": "0.29.1",
+    "@solidjs/router": "0.8.4",
+    "solid-js": "1.8.5",
+    "solid-start": "0.3.10"
   },
   "devDependencies": {
-    "@types/node": "^18.17.5",
-    "esbuild": "^0.14.54",
-    "postcss": "^8.4.28",
-    "solid-start-node": "^0.3.9",
-    "typescript": "^5.2.2",
-    "vite": "^4.4.9"
+    "@types/node": "20.9.0",
+    "esbuild": "0.19.5",
+    "postcss": "8.4.31",
+    "prettier": "3.0.3",
+    "solid-start-node": "0.3.10",
+    "typescript": "5.2.2",
+    "vite": "4.5.0"
   },
   "engines": {
     "node": ">=20"
