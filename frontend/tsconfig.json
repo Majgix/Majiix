@@ -1,17 +1,57 @@
 {
   "compilerOptions": {
-    "allowSyntheticDefaultImports": true,
-    "esModuleInterop": true,
+    // Projects
+    "incremental": true,
+    "composite": true,
+    "tsBuildInfoFile": "./dist/.tsbuildinfo",
+
+    // Language and Environment
     "target": "ESNext",
+    "lib": ["esnext", "dom"],
+    "jsx": "preserve",
+    "jsxImportSource": "solid-js",
+    "useDefineForClassFields": true,
+
+    // Modules
     "module": "ESNext",
     "moduleResolution": "node",
-    "jsxImportSource": "solid-js",
-    "jsx": "preserve",
-    "strict": true,
-    "baseUrl": "./",
-    "lib": ["esnext", "dom"],
+    "baseUrl": "./src",
     "paths": {
-      "~/*": ["./src/*"]
-    }
-  }
+      "~/*": ["./*"]
+    },
+
+    // Emit
+    "noEmit": true,
+    "outDir": "./dist",
+    "importsNotUsedAsValues": "remove",
+
+    // Interop Constraints
+    "isolatedModules": true,
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+
+    // Type Checking
+    "strict": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "strictFunctionTypes": true,
+    "strictBindCallApply": true,
+    "strictPropertyInitialization": true,
+    "noImplicitThis": true,
+    "useUnknownInCatchVariables": true,
+    "alwaysStrict": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "noPropertyAccessFromIndexSignature": true,
+
+    // Completeness
+    "skipLibCheck": true
+  },
+  "include": ["./src/**/*.ts", "./src/**/*.tsx"]
 }

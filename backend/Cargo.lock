@@ -208,6 +208,7 @@ version = "0.1.0"
 dependencies = [
  "axum",
  "axum-macros",
+ "dotenv",
  "h3",
  "h3-quinn",
  "hyper",
@@ -318,6 +319,12 @@ checksum = "5a22b2d63d4d1dc0b7f1b6b2747dd0088008a9be28b6ddf0b1e7d335e3037294"
 dependencies = [
  "cfg-if",
 ]
+
+[[package]]
+name = "dotenv"
+version = "0.15.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "77c90badedccf4105eca100756a0b1289e191f6fcbdadd3cee1d2f614f97da8f"
 
 [[package]]
 name = "errno"

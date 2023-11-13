@@ -1,0 +1,8 @@
+target
+dist
+.solid
+
+node_modules
+
+.yarn
+.pnp.*

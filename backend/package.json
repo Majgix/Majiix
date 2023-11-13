@@ -1,0 +1,15 @@
+{
+  "name": "@majiix/backend",
+  "version": "0.1.0",
+  "license": "UNLICENSED",
+  "scripts": {
+    "build": "cargo build --release",
+    "check": "cargo check",
+    "dev": "cargo run",
+    "fmt": "cargo fmt",
+    "fmt:check": "cargo fmt --check",
+    "lint": "cargo clippy",
+    "lint:fix": "cargo clippy --fix",
+    "test": "cargo test"
+  }
+}

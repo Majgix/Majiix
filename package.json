@@ -1,0 +1,14 @@
+{
+  "name": "majiix",
+  "license": "UNLICENSED",
+  "private": true,
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
+  "packageManager": "yarn@3.6.4",
+  "devDependencies": {
+    "prettier": "3.0.3",
+    "typescript": "5.2.2"
+  }
+}
