@@ -22,6 +22,6 @@ pub fn load() -> Env {
     dotenv().ok();
 
     Env {
-        port: num("PORT", 4443),
+        port: num("PORT", 8080),
     }
 }
