@@ -1951,6 +1951,7 @@ __metadata:
     "@solidjs/router": 0.8.4
     "@types/node": 20.9.0
     esbuild: 0.19.5
+    hls.js: 1.4.12
     postcss: 8.4.31
     prettier: 3.0.3
     solid-js: 1.8.5
@@ -3373,6 +3374,13 @@ __metadata:
   dependencies:
     function-bind: "npm:^1.1.2"
   checksum: 6151c75ca12554565098641c98a40f4cc86b85b0fd5b6fe92360967e4605a4f9610f7757260b4e8098dd1c2ce7f4b095f2006fe72a570e3b6d2d28de0298c176
+  languageName: node
+  linkType: hard
+
+"hls.js@npm:1.4.12":
+  version: 1.4.12
+  resolution: "hls.js@npm:1.4.12"
+  checksum: a30c055ea1fc9ee9f4eee1b8b17f7ed7900ebe25e790de4f3097a03afb841cf138d51b67ef27e09700672395e305302d1d68b3b9f6c0bce3c1c6692fad86008c
   languageName: node
   linkType: hard
 
