@@ -5,18 +5,16 @@ use axum::{
     Router, Server,
 };
 use hyper::{header, Body};
-use std::{net::SocketAddr, path::Path, process::Stdio, sync::Arc};
+use wtransport::{endpoint::IncomingSession, ServerConfig, tls::Certificate, Endpoint};
+use std::{net::SocketAddr, path::{Path, PathBuf}, process::Stdio, time::Duration};
 use tokio::{
-    fs::File,
     io::{AsyncReadExt, AsyncWriteExt},
-    process::Command,
+    process::Command, fs::File,
 };
-use anyhow::Context;
 use tracing::{info, level_filters::LevelFilter};
 use tracing_subscriber::EnvFilter;
 
 mod env;
-
 async fn ingest() -> Result<Html<&'static str>, (StatusCode, &'static str)> {
     // Change these paths as needed
     let input_path = "media/bbb-720p.mp4";
@@ -126,38 +124,39 @@ async fn serve_media_file(
     Ok(response)
 }
 
-// Attempts to start a webtransport connection and receive a datagram
-// just to test out datagram support for:
-// https://github.com/kelvinkirima014/webtransport-rs
-async fn handle_webtransport_conn(conn: quinn::Connecting) -> anyhow::Result<()> {
-    info!("Starting new QUIC connection");
+async fn handle_wt_connection(incoming_session: IncomingSession) -> anyhow::Result<()> {
+    info!("Waiting for session request...");
 
-    //wait for QUIC handshake to complete
-    let conn = &conn.await.context("failed to accept connection")?;
+    let session_request = incoming_session.await?;
+    info!("Received session request...");
 
-    //Perform the Webtransport handshake
-    let request = webtransport_quinn::accept(conn.clone()).await?;
-    info!("received Webtransport request: {}", request.url());
+    info!(
+        "New session: Authority: '{}', Path: '{}'",
+        session_request.authority(),
+        session_request.path()
+    );
 
-   
-    let session = request.ok().await.context("failed to accept session")?;
+    //accept connection
+    let connection = session_request.accept().await?;
 
-    let datagram = session.read_datagram();
+    info!("waiting for data from client...");
 
-    if let Ok(datagram) = datagram.await {
-        let q_stream_id = datagram.qstream_id();
-        let payload = datagram.payload();
+    loop {
+        tokio::select! {
+            datagram = connection.receive_datagram() => {
+                let datagram = datagram?;
+                info!("accepted datagrams");
 
-        info!("Received datagram with QStream ID: {:?}", q_stream_id);
-        info!("Payload: {:?}", payload);
+                let str_data = std::str::from_utf8(&datagram)?;
 
-        session.send_datagram(q_stream_id, payload.clone()).await?;
-    }  else {
-        // Handle the case where awaiting the datagram fails
-        info!("invalid request");
+                info!("received {str_data} from client");
+
+                connection.send_datagram(b"Ack")?;
+            }
+        }
     }
 
-    Ok(())
+
 }
 
 #[tokio::main]
@@ -168,48 +167,38 @@ async fn main() -> anyhow::Result<()> {
     let addr = SocketAddr::from(([127, 0, 0, 1], env.port));
     info!("Listening at addr: https://{:?}", addr);
 
-    // Generate a cert
-    let gen = rcgen::generate_simple_self_signed(vec![addr.to_string()]).unwrap();
+    let cert_path = PathBuf::from("../certs/localhost.pem");
 
-    //convert the rcgen cert to a rustls certificate
-    let cert = rustls::Certificate(gen.serialize_der().unwrap());
-    let key = rustls::PrivateKey(gen.serialize_private_key_der());
+    let key_path = PathBuf::from("../certs/localhost-key.pem");
 
-    //Quinn setup
-    let mut tls_config = rustls::ServerConfig::builder()
-        .with_safe_default_cipher_suites()
-        .with_safe_default_kx_groups()
-        .with_protocol_versions(&[&rustls::version::TLS13]).unwrap()
-        .with_no_client_auth()
-        .with_single_cert(vec![cert], key)?;
+    let config = ServerConfig::builder()
+        .with_bind_address(addr)
+        .with_certificate(Certificate::load(cert_path, key_path).await?)
+        .keep_alive_interval(Some(Duration::from_secs(3)))
+        .build();
 
-    tls_config.max_early_data_size = u32::MAX;
-    tls_config.alpn_protocols = vec![webtransport_quinn::ALPN.to_vec()];
+    let server = Endpoint::server(config)?;
 
-    let config = quinn::ServerConfig::with_crypto(Arc::new(tls_config));
+    info!("Server ready!");
 
-    info!("Server started at addr: https://{:?}", addr);
+    let incoming_session = server.accept();
 
-    let server = quinn::Endpoint::server(config, addr)?;
-
-    //Accept new connections
-    while let Some(conn) = server.accept().await {
-        tokio::spawn(async move {
-            let _ = handle_webtransport_conn(conn).await;
-        });
-    }
+    tokio::spawn(handle_wt_connection(incoming_session.await));
 
 
 
-    let app = Router::new()
-        .route("/media/*file_path", get(serve_media_file))
-        .route("/ingest", get(ingest));
+    
 
 
-    Server::bind(&addr)
-        .serve(app.into_make_service())
-        .await
-        .expect("Failed to start server");
+    // let app = Router::new()
+    //     .route("/media/*file_path", get(serve_media_file))
+    //     .route("/ingest", get(ingest));
+
+
+    // Server::bind(&addr)
+    //     .serve(app.into_make_service())
+    //     .await
+    //     .expect("Failed to start server");
 
     Ok(())
 }

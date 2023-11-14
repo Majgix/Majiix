@@ -2,6 +2,7 @@ import Hls from "hls.js";
 import { createSignal } from "solid-js";
 import "./Render.css";
 
+
 export default function Render() {
   const [mediaElement, setMediaElement] = createSignal<HTMLVideoElement | null>(
     null,
@@ -68,6 +69,36 @@ export default function Render() {
     }
   };
 
+  const sendDatagram = async () => {
+    const url = "https://127.0.0.1:4443"
+
+    const webTransport = new WebTransport(url);
+    console.log("Initiating connection...")
+
+    try {
+      await webTransport.ready;
+      console.log("Connection ready");
+    } catch(error) {
+      console.error("Connection failed ", error);
+    }
+
+    const writer = webTransport.datagrams.writable.getWriter();
+
+    const data = new Uint8Array([40, 44, 48]);
+    await writer.write(data);
+
+    await writer.close();
+
+     webTransport.closed
+      .then(() => {
+        console.log('Connection closed normally.');
+      })
+      .catch(() => {
+        console.error('Connection closed abruptly.', 'error');
+      });
+
+  }
+
   return (
     <div>
       <button onClick={startStream} class="increment">
@@ -76,6 +107,7 @@ export default function Render() {
       <button onClick={testHLSPlayback} class="increment">
         Test HLS playback
       </button>
+      <button onClick={sendDatagram} class="increment">Send Datagram</button>
       {mediaElement()}
       {mediaElement2()}
     </div>

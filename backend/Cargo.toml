@@ -10,7 +10,6 @@ axum = "0.6.20"
 axum-macros = "0.3.8"
 dotenv = "0.15.0"
 hyper = { version = "0.14.27", features = ["full"] }
-webtransport-quinn ={ git = "https://github.com/kelvinkirima014/webtransport-rs.git" }
 tokio = { version = "1.33.0", features = ["full"] }
 quinn = "0.10.2"
 anyhow = "1.0.75"
@@ -18,3 +17,5 @@ tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.17", features = ["env-filter"] }
 rcgen = "0.11.3"
 rustls = "0.21.8"
+rustls-pemfile = "1.0.4"
+wtransport = "0.1.8"

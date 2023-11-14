@@ -18,8 +18,10 @@
     "@solidjs/meta": "0.29.1",
     "@solidjs/router": "0.8.4",
     "hls.js": "1.4.12",
+    "mkcert": "^3.2.0",
     "solid-js": "1.8.5",
-    "solid-start": "0.3.10"
+    "solid-start": "0.3.10",
+    "vite-plugin-mkcert": "^1.16.0"
   },
   "devDependencies": {
     "@types/node": "20.9.0",
