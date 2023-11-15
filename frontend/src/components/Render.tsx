@@ -2,7 +2,6 @@ import Hls from "hls.js";
 import { createSignal } from "solid-js";
 import "./Render.css";
 
-
 export default function Render() {
   const [mediaElement, setMediaElement] = createSignal<HTMLVideoElement | null>(
     null,
@@ -12,7 +11,7 @@ export default function Render() {
     createSignal<HTMLVideoElement | null>(null);
 
   const testHLSPlayback = async () => {
-    const src = "http://localhost:8080/media/bbb-720p/v.m3u8";
+    const src = "https://localhost:4443/media/bbb-720p/v.m3u8";
     try {
       const video = document.createElement("video");
 
@@ -70,15 +69,15 @@ export default function Render() {
   };
 
   const sendDatagram = async () => {
-    const url = "https://127.0.0.1:4443"
+    const url = "https://127.0.0.1:4443";
 
     const webTransport = new WebTransport(url);
-    console.log("Initiating connection...")
+    console.log("Initiating connection...");
 
     try {
       await webTransport.ready;
       console.log("Connection ready");
-    } catch(error) {
+    } catch (error) {
       console.error("Connection failed ", error);
     }
 
@@ -89,15 +88,14 @@ export default function Render() {
 
     await writer.close();
 
-     webTransport.closed
+    webTransport.closed
       .then(() => {
-        console.log('Connection closed normally.');
+        console.log("Connection closed normally.");
       })
       .catch(() => {
-        console.error('Connection closed abruptly.', 'error');
+        console.error("Connection closed abruptly.", "error");
       });
-
-  }
+  };
 
   return (
     <div>
@@ -107,7 +105,9 @@ export default function Render() {
       <button onClick={testHLSPlayback} class="increment">
         Test HLS playback
       </button>
-      <button onClick={sendDatagram} class="increment">Send Datagram</button>
+      <button onClick={sendDatagram} class="increment">
+        Send Datagram
+      </button>
       {mediaElement()}
       {mediaElement2()}
     </div>
