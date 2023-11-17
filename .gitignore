@@ -3,8 +3,9 @@
 /*/.solid
 /*/media
 
+certs/*.pem
+
 .env*.local
-frontend/.env
 
 node_modules
 
@@ -19,4 +20,3 @@ Thumbs.db
 !.yarn/sdks
 !.yarn/versions
 .vscode/
-certs/*.pem

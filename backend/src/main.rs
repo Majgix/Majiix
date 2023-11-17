@@ -1,18 +1,26 @@
 use axum::{
-    http::StatusCode,
-    response::{Html, Response},
+    body::Full,
+    http::{header, StatusCode},
+    response::{Html, IntoResponse},
     routing::get,
     Router, Server,
 };
-use hyper::{header, Body};
-use wtransport::{endpoint::IncomingSession, ServerConfig, tls::Certificate, Endpoint};
-use std::{net::SocketAddr, path::{Path, PathBuf}, process::Stdio, time::Duration};
+use hyper::server::conn::AddrIncoming;
+use hyper_rustls::TlsAcceptor;
+use std::{
+    net::SocketAddr,
+    path::Path,
+    process::Stdio,
+    time::Duration,
+};
 use tokio::{
+    fs::File,
     io::{AsyncReadExt, AsyncWriteExt},
-    process::Command, fs::File,
+    process::Command,
 };
 use tracing::{info, level_filters::LevelFilter};
 use tracing_subscriber::EnvFilter;
+use wtransport::{endpoint::IncomingSession, tls::Certificate, Endpoint, ServerConfig};
 
 mod env;
 async fn ingest() -> Result<Html<&'static str>, (StatusCode, &'static str)> {
@@ -90,19 +98,12 @@ async fn ingest() -> Result<Html<&'static str>, (StatusCode, &'static str)> {
 
 async fn serve_media_file(
     axum::extract::Path(file_path): axum::extract::Path<String>,
-) -> Result<Response<Body>, (StatusCode, &'static str)> {
+) -> impl IntoResponse {
     let base_path = "media"; // Base path to the media directory
     let full_path = format!("{}/{}", base_path, file_path); // Create the full file path
     let mut file = match File::open(full_path).await {
         Ok(file) => file,
         Err(_) => return Err((StatusCode::NOT_FOUND, "File not found")),
-    };
-
-    // TODO: stream the file out directly instead of buffering it intermediately in memory
-    let mut contents = Vec::new();
-    match file.read_to_end(&mut contents).await {
-        Ok(_) => (),
-        Err(_) => return Err((StatusCode::INTERNAL_SERVER_ERROR, "Failed to read file")),
     };
 
     let content_type = match Path::new(&file_path)
@@ -114,17 +115,27 @@ async fn serve_media_file(
         _ => "application/octet-stream",
     };
 
-    let response = Response::builder()
-        .status(StatusCode::OK)
-        .header(header::CONTENT_TYPE, content_type)
-        .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "http://localhost:3000")
-        .body(Body::from(contents))
-        .expect("Failed to construct response");
+    // TODO: stream the file out directly instead of buffering it intermediately in memory
+    let mut contents = Vec::new();
+    match file.read_to_end(&mut contents).await {
+        Ok(_) => (),
+        Err(_) => return Err((StatusCode::INTERNAL_SERVER_ERROR, "Failed to read file")),
+    };
 
-    Ok(response)
+    Ok((
+        StatusCode::OK,
+        [
+            (header::CONTENT_TYPE, content_type),
+            (
+                header::ACCESS_CONTROL_ALLOW_ORIGIN,
+                "https://localhost:3000",
+            ),
+        ],
+        Full::from(contents),
+    ))
 }
 
-async fn handle_wt_connection(incoming_session: IncomingSession) -> anyhow::Result<()> {
+async fn _handle_wt_connection(incoming_session: IncomingSession) -> anyhow::Result<()> {
     info!("Waiting for session request...");
 
     let session_request = incoming_session.await?;
@@ -155,8 +166,6 @@ async fn handle_wt_connection(incoming_session: IncomingSession) -> anyhow::Resu
             }
         }
     }
-
-
 }
 
 #[tokio::main]
@@ -167,38 +176,42 @@ async fn main() -> anyhow::Result<()> {
     let addr = SocketAddr::from(([127, 0, 0, 1], env.port));
     info!("Listening at addr: https://{:?}", addr);
 
-    let cert_path = PathBuf::from("../certs/localhost.pem");
-
-    let key_path = PathBuf::from("../certs/localhost-key.pem");
-
     let config = ServerConfig::builder()
         .with_bind_address(addr)
-        .with_certificate(Certificate::load(cert_path, key_path).await?)
+        .with_certificate(Certificate::load("../certs/localhost.pem", "../certs/localhost-key.pem").await?)
         .keep_alive_interval(Some(Duration::from_secs(3)))
         .build();
 
-    let server = Endpoint::server(config)?;
+    let _server = Endpoint::server(config)?;
+
+    // let incoming_session = server.accept();
+
+    // tokio::spawn(handle_wt_connection(incoming_session.await));
+
+
+    // TODO: it's stupid to read these in again - we just did above
+    let certs = load_certs("../certs/localhost.pem")?;
+    let key = load_private_key("../certs/localhost-key.pem")?;
+    // Build TLS configuration.
+
+    // Create a TCP listener via tokio.
+    let incoming = AddrIncoming::bind(&addr)?;
+    let acceptor = TlsAcceptor::builder()
+        .with_single_cert(certs, key)
+        .map_err(|e| error(format!("{}", e)))?
+        .with_all_versions_alpn()
+        .with_incoming(incoming);
+
+    let app = Router::new()
+        .route("/media/*file_path", get(serve_media_file))
+        .route("/ingest", get(ingest));
 
     info!("Server ready!");
 
-    let incoming_session = server.accept();
-
-    tokio::spawn(handle_wt_connection(incoming_session.await));
-
-
-
-    
-
-
-    // let app = Router::new()
-    //     .route("/media/*file_path", get(serve_media_file))
-    //     .route("/ingest", get(ingest));
-
-
-    // Server::bind(&addr)
-    //     .serve(app.into_make_service())
-    //     .await
-    //     .expect("Failed to start server");
+    Server::builder(acceptor)
+        .serve(app.into_make_service())
+        .await
+        .expect("Failed to start server");
 
     Ok(())
 }
@@ -213,4 +226,38 @@ fn init_logging() {
         .with_level(true)
         .with_env_filter(env_filter)
         .init();
+}
+
+fn error(err: String) -> std::io::Error {
+    std::io::Error::new(std::io::ErrorKind::Other, err)
+}
+
+// Load public certificate from file.
+fn load_certs(filename: &str) -> std::io::Result<Vec<rustls::Certificate>> {
+    // Open certificate file.
+    let certfile = std::fs::File::open(filename)
+        .map_err(|e| error(format!("failed to open {}: {}", filename, e)))?;
+    let mut reader = std::io::BufReader::new(certfile);
+
+    // Load and return certificate.
+    let certs = rustls_pemfile::certs(&mut reader)
+        .map_err(|_| error("failed to load certificate".into()))?;
+    Ok(certs.into_iter().map(rustls::Certificate).collect())
+}
+
+// Load private key from file.
+fn load_private_key(filename: &str) -> std::io::Result<rustls::PrivateKey> {
+    // Open keyfile.
+    let keyfile = std::fs::File::open(filename)
+        .map_err(|e| error(format!("failed to open {}: {}", filename, e)))?;
+    let mut reader = std::io::BufReader::new(keyfile);
+
+    // Load and return a single private key.
+    let keys = rustls_pemfile::pkcs8_private_keys(&mut reader)
+        .map_err(|_| error("failed to load private key".into()))?;
+    if keys.len() != 1 {
+        return Err(error("expected a single private key".into()));
+    }
+
+    Ok(rustls::PrivateKey(keys[0].clone()))
 }
