@@ -2,7 +2,7 @@ import { readFile, readFileSync } from "fs";
 import solid from "solid-start/vite";
 import { defineConfig } from "vite";
 
-let keyPath = "../certs/localhost-key.pem";
+let keyPath = "../certs/localhost-pem.key";
 let certPath = "../certs/localhost.pem";
 
 let key = readFileSync(keyPath);

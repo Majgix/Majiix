@@ -11,7 +11,7 @@ use tokio::{
     process::Command,
 };
 
-pub async fn ingest() -> Result<Html<&'static str>, (StatusCode, &'static str)> {
+pub async fn _ingest() -> Result<Html<&'static str>, (StatusCode, &'static str)> {
     // Change these paths as needed
     let input_path = "media/bbb-720p.mp4";
     let output_path = "media/bbb-720p/v.m3u8";
@@ -84,7 +84,7 @@ pub async fn ingest() -> Result<Html<&'static str>, (StatusCode, &'static str)> 
     Ok(Html("ingest completed"))
 }
 
-pub async fn serve_media_file(
+pub async fn _serve_media_file(
     axum::extract::Path(file_path): axum::extract::Path<String>,
 ) -> impl IntoResponse {
     let base_path = "media"; // Base path to the media directory

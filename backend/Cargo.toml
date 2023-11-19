@@ -12,11 +12,16 @@ dotenv = "0.15.0"
 hyper = { version = "0.14.27", features = ["full"] }
 hyper-rustls = { version = "0.24.2", features = ["acceptor"] }
 tokio = { version = "1.33.0", features = ["full"] }
-quinn = "0.10.2"
 anyhow = "1.0.75"
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.17", features = ["env-filter"] }
-rcgen = "0.11.3"
-rustls = "0.21.8"
+rustls = { version = "0.21", features = ["dangerous_configuration"] }
 rustls-pemfile = "1.0.4"
-wtransport = "0.1.8"
+h3-quinn = "0.0.4"
+clap = { version = "4.4.8", features = ["derive"] }
+lazy_static = "1.4.0"
+quinn = "0.10.2"
+h3 = "0.0.3"
+bytes = "1.5.0"
+http = "1.0.0"
+h3-webtransport = "0.1.0"

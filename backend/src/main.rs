@@ -1,94 +1,114 @@
-use axum::{routing::get, Router, Server};
-use hyper::server::conn::AddrIncoming;
-use hyper_rustls::TlsAcceptor;
-use std::{net::SocketAddr, time::Duration};
-use tracing::{info, level_filters::LevelFilter};
+use clap::Parser;
+use rustls::{Certificate, PrivateKey};
+use std::{net::SocketAddr, path::PathBuf, sync::Arc, time::Duration};
+use tracing::{error, info, level_filters::LevelFilter, trace_span};
 use tracing_subscriber::EnvFilter;
-use wtransport::{endpoint::IncomingSession, tls::Certificate, Endpoint, ServerConfig};
-
-use crate::routes::{ingest, serve_media_file};
+use wt::WEBTRANSPORT_ALPN;
 
 mod env;
 mod routes;
+mod wt;
 
-async fn _handle_wt_connection(incoming_session: IncomingSession) -> anyhow::Result<()> {
-    info!("Waiting for session request...");
+#[derive(Debug, Parser)]
+#[clap(name = "wt_server")]
+pub struct Args {
+    #[clap(
+        short,
+        long,
+        default_value = "127.0.0.1:4443",
+        help = "What address:port to listen for new connections"
+    )]
+    pub listen: SocketAddr,
 
-    let session_request = incoming_session.await?;
-    info!("Received session request...");
+    #[clap(flatten)]
+    pub certs: Certs,
+}
 
-    info!(
-        "New session: Authority: '{}', Path: '{}'",
-        session_request.authority(),
-        session_request.path()
-    );
+#[derive(Debug, Parser)]
+pub struct Certs {
+    #[clap(
+        long,
+        short,
+        default_value = "../certs/localhost.crt",
+        help = "TLS Certificate. If present, `--key` is mandatory."
+    )]
+    pub cert: PathBuf,
 
-    //accept connection
-    let connection = session_request.accept().await?;
-
-    info!("waiting for data from client...");
-
-    loop {
-        tokio::select! {
-            datagram = connection.receive_datagram() => {
-                let datagram = datagram?;
-                info!("accepted datagrams");
-
-                let str_data = std::str::from_utf8(&datagram)?;
-
-                info!("received {str_data} from client");
-
-                connection.send_datagram(b"Ack")?;
-            }
-        }
-    }
+    #[clap(
+        long,
+        short,
+        default_value = "../certs/localhost.key",
+        help = "Private key for the certificate."
+    )]
+    pub key: PathBuf,
 }
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     init_logging();
-    let env = env::load();
 
-    let addr = SocketAddr::from(([127, 0, 0, 1], env.port));
-    info!("Listening at addr: https://{:?}", addr);
+    let _env = env::load();
 
-    let config = ServerConfig::builder()
-        .with_bind_address(addr)
-        .with_certificate(
-            Certificate::load("../certs/localhost.pem", "../certs/localhost-key.pem").await?,
-        )
-        .keep_alive_interval(Some(Duration::from_secs(3)))
-        .build();
+    let args = Args::parse();
 
-    let _server = Endpoint::server(config)?;
+    let Certs { cert, key } = args.certs;
 
-    // let incoming_session = server.accept();
+    //DER-encoded cert and key
+    let cert = Certificate(std::fs::read(cert)?);
+    let key = PrivateKey(std::fs::read(key)?);
 
-    // tokio::spawn(handle_wt_connection(incoming_session.await));
+    let mut tls_config = rustls::ServerConfig::builder()
+        .with_safe_default_cipher_suites()
+        .with_safe_default_kx_groups()
+        .with_protocol_versions(&[&rustls::version::TLS13])?
+        .with_no_client_auth()
+        .with_single_cert(vec![cert], key)?;
 
-    // TODO: it's stupid to read these in again - we just did above
-    let certs = load_certs("../certs/localhost.pem")?;
-    let key = load_private_key("../certs/localhost-key.pem")?;
-    // Build TLS configuration.
+    tls_config.max_early_data_size = u32::MAX;
+    tls_config.alpn_protocols = WEBTRANSPORT_ALPN.to_vec();
 
-    // Create a TCP listener via tokio.
-    let incoming = AddrIncoming::bind(&addr)?;
-    let acceptor = TlsAcceptor::builder()
-        .with_single_cert(certs, key)
-        .map_err(|e| error(format!("{}", e)))?
-        .with_all_versions_alpn()
-        .with_incoming(incoming);
+    let mut server_config = quinn::ServerConfig::with_crypto(Arc::new(tls_config));
+    let mut transport_config = quinn::TransportConfig::default();
+    transport_config.keep_alive_interval(Some(Duration::from_secs(3)));
+    server_config.transport = Arc::new(transport_config);
+    let endpoint = quinn::Endpoint::server(server_config, args.listen)?;
 
-    let app = Router::new()
-        .route("/media/*file_path", get(serve_media_file))
-        .route("/ingest", get(ingest));
+    info!("listening on {}", args.listen);
 
-    info!("Server ready!");
+    // Accept new quic connections and spawn a new task to handle them
+    while let Some(new_conn) = endpoint.accept().await {
+        trace_span!("Attempting a new connection");
 
-    Server::builder(acceptor)
-        .serve(app.into_make_service())
-        .await
-        .expect("Failed to start server");
+        tokio::spawn(async move {
+            match new_conn.await {
+                Ok(conn) => {
+                    info!("new http3 established");
+                    let h3_conn = h3::server::builder()
+                        .enable_webtransport(true)
+                        .enable_connect(true)
+                        .enable_datagram(true)
+                        .max_webtransport_sessions(1)
+                        .send_grease(true)
+                        .build(h3_quinn::Connection::new(conn))
+                        .await
+                        .unwrap();
+
+                    tokio::spawn(async move {
+                        if let Err(err) = wt::handle_connection(h3_conn).await {
+                            error!("Failed to handle connection: {:?}", err);
+                        }
+                    });
+                }
+                Err(err) => {
+                    error!("Failed to accept connection: {:?}", err);
+                }
+            }
+        });
+    }
+
+    // shut down gracefully
+    // wait for connections to be closed before exiting
+    endpoint.wait_idle().await;
 
     Ok(())
 }
@@ -105,36 +125,6 @@ fn init_logging() {
         .init();
 }
 
-fn error(err: String) -> std::io::Error {
+fn _error(err: String) -> std::io::Error {
     std::io::Error::new(std::io::ErrorKind::Other, err)
-}
-
-// Load public certificate from file.
-fn load_certs(filename: &str) -> std::io::Result<Vec<rustls::Certificate>> {
-    // Open certificate file.
-    let certfile = std::fs::File::open(filename)
-        .map_err(|e| error(format!("failed to open {}: {}", filename, e)))?;
-    let mut reader = std::io::BufReader::new(certfile);
-
-    // Load and return certificate.
-    let certs = rustls_pemfile::certs(&mut reader)
-        .map_err(|_| error("failed to load certificate".into()))?;
-    Ok(certs.into_iter().map(rustls::Certificate).collect())
-}
-
-// Load private key from file.
-fn load_private_key(filename: &str) -> std::io::Result<rustls::PrivateKey> {
-    // Open keyfile.
-    let keyfile = std::fs::File::open(filename)
-        .map_err(|e| error(format!("failed to open {}: {}", filename, e)))?;
-    let mut reader = std::io::BufReader::new(keyfile);
-
-    // Load and return a single private key.
-    let keys = rustls_pemfile::pkcs8_private_keys(&mut reader)
-        .map_err(|_| error("failed to load private key".into()))?;
-    if keys.len() != 1 {
-        return Err(error("expected a single private key".into()));
-    }
-
-    Ok(rustls::PrivateKey(keys[0].clone()))
 }
