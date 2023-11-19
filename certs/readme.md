@@ -4,7 +4,7 @@ The certs folder contains some helpful scripts for local development.
 
 ## Setup
 
-QUIC mandates TLS even for local development, which makes local dev difficult. We have added some scripts to help us along. 
+QUIC mandates TLS even for local development, which is unfortunate. We have added some scripts to help us along. 
 
 First we need to generate a TLS certificate and it's corresponding private key:
 
