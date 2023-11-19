@@ -4,6 +4,9 @@
 /*/media
 
 certs/*.pem
+certs/*.key
+certs/*.crt
+
 
 .env*.local
 
