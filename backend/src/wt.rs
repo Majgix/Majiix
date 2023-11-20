@@ -13,6 +13,7 @@ use tracing::info;
 // list of ALPN values that are supported by the WebTransport protocol
 // The h3 value represents HTTP/3 while the other corresponding
 // values represent the quic version
+// see https://datatracker.ietf.org/doc/html/rfc9114#name-connection-establishment
 lazy_static! {
     pub static ref WEBTRANSPORT_ALPN: Vec<Vec<u8>> = vec![
         b"h3".to_vec(),
