@@ -1,5 +1,5 @@
 //! This file contains implementations related to WebTransport
-use bytes::{BufMut, Bytes, BytesMut};
+use bytes::Bytes;
 use h3::{
     ext::Protocol,
     quic::{RecvDatagramExt, SendDatagramExt},
@@ -10,6 +10,9 @@ use hyper::Method;
 use lazy_static::lazy_static;
 use tracing::info;
 
+// list of ALPN values that are supported by the WebTransport protocol
+// The h3 value represents HTTP/3 while the other corresponding
+// values represent the quic version
 lazy_static! {
     pub static ref WEBTRANSPORT_ALPN: Vec<Vec<u8>> = vec![
         b"h3".to_vec(),
@@ -40,13 +43,13 @@ pub async fn handle_connection(
                         return Ok(());
                     }
                     _ => {
-                        info!(?req, "Request Recived");
+                        info!(?req, "Request Received");
                     }
                 }
             }
 
-            //We need to handle the None variant
-            //imdicating no more data to be received
+            // We need to handle the None variant
+            // indicating no more data to be received
             Ok(None) => {
                 break;
             }
@@ -65,7 +68,8 @@ pub async fn handle_connection(
 
 async fn wt_run<C>(session: WebTransportSession<C, Bytes>) -> anyhow::Result<()>
 where
-    C: 'static
+    C: 
+        'static
         + Send
         + h3::quic::Connection<Bytes>
         + RecvDatagramExt<Buf = Bytes>
@@ -77,12 +81,8 @@ where
                 let datagram = datagram?;
                 if let Some((_, datagram)) = datagram {
                     info!("Responding with {datagram:?}");
-                    // Put something before to make sure encoding and
-                    // decoding works and don't just pass through
-                    let mut resp = BytesMut::from(&b"Response: "[..]);
-                    resp.put(datagram);
-
-                    session.send_datagram(resp.freeze())?;
+                    
+                    session.send_datagram(datagram)?;
                     info!("Finished sending datagram")
                 }
             }
