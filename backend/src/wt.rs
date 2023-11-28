@@ -69,8 +69,7 @@ pub async fn handle_connection(
 
 async fn wt_run<C>(session: WebTransportSession<C, Bytes>) -> anyhow::Result<()>
 where
-    C: 
-        'static
+    C: 'static
         + Send
         + h3::quic::Connection<Bytes>
         + RecvDatagramExt<Buf = Bytes>
@@ -82,7 +81,7 @@ where
                 let datagram = datagram?;
                 if let Some((_, datagram)) = datagram {
                     info!("Responding with {datagram:?}");
-                    
+
                     session.send_datagram(datagram)?;
                     info!("Finished sending datagram")
                 }
