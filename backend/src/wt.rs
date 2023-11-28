@@ -44,7 +44,7 @@ pub async fn handle_connection(
                         return Ok(());
                     }
                     _ => {
-                        info!(?req, "Request Received");
+                        info!("Request Received {:?}", req);
                     }
                 }
             }

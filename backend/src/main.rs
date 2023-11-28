@@ -6,7 +6,6 @@ use tracing_subscriber::EnvFilter;
 use wt::WEBTRANSPORT_ALPN;
 
 mod env;
-mod routes;
 mod wt;
 
 #[derive(Debug, Parser)]
@@ -82,7 +81,7 @@ async fn main() -> anyhow::Result<()> {
         tokio::spawn(async move {
             match new_conn.await {
                 Ok(conn) => {
-                    info!("new http3 established");
+                    info!("new HTTP/3 connection established");
                     let h3_conn = h3::server::builder()
                         .enable_webtransport(true)
                         .enable_connect(true)
@@ -123,8 +122,4 @@ fn init_logging() {
         .with_level(true)
         .with_env_filter(env_filter)
         .init();
-}
-
-fn _error(err: String) -> std::io::Error {
-    std::io::Error::new(std::io::ErrorKind::Other, err)
 }
