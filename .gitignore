@@ -3,6 +3,9 @@
 /*/.solid
 /*/media
 
+certs/*.pem
+certs/*.der
+
 .env*.local
 
 node_modules
