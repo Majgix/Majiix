@@ -1,19 +1,16 @@
-import { readFile, readFileSync } from "fs";
+import { readFileSync } from "fs";
 import solid from "solid-start/vite";
 import { defineConfig } from "vite";
 
-let keyPath = "../certs/localhost-pem.key";
-let certPath = "../certs/localhost.pem";
-
-let key = readFileSync(keyPath);
-let cert = readFileSync(certPath);
-
 export default defineConfig({
-  server: {
-    https: {
-      key,
-      cert,
-    },
-  },
+  server:
+    process.env["NODE_ENV"] === "development"
+      ? {
+          https: {
+            key: readFileSync("../certs/localhost-pem.key"),
+            cert: readFileSync("../certs/localhost.pem"),
+          },
+        }
+      : undefined,
   plugins: [solid()],
 });
