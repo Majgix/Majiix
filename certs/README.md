@@ -6,14 +6,25 @@ The certs folder contains some helpful scripts for local development.
 
 QUIC mandates TLS even for local development, which is unfortunate. We have added some scripts to help us along.
 
-First we need to generate a TLS certificate and its corresponding private key:
+First, cd into this folder!
 
 ```sh
 cd certs
-./generate_certs.sh
 ```
 
-And then launch the chrome browser with some flags indicating what host and port should be allowed to use the self-signed certificate.
+Second, install `mkcert` and set up your own development Certificate Authority (CA).
+
+```sh
+./install.sh
+```
+
+Then generate certificates in .pem (Base64 encoded, needed for the frontend) form and additionally convert to .der (binary, needed for the backend) form.
+
+```sh
+./mkcert.sh
+```
+
+Finally, launch the Chrome browser with flags to allow to use the self-signed certificate. We don't yet fully understand why this is necessary, as the certificate has a "valid" CA. Possibly there are other requirements?
 
 ```sh
 ./launch_chrome.sh

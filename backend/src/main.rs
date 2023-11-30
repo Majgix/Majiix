@@ -28,7 +28,7 @@ pub struct Certs {
     #[clap(
         long,
         short,
-        default_value = "../certs/localhost.crt",
+        default_value = "../certs/localhost.crt.der",
         help = "TLS Certificate. If present, `--key` is mandatory."
     )]
     pub cert: PathBuf,
@@ -36,7 +36,7 @@ pub struct Certs {
     #[clap(
         long,
         short,
-        default_value = "../certs/localhost.key",
+        default_value = "../certs/localhost.key.der",
         help = "Private key for the certificate."
     )]
     pub key: PathBuf,

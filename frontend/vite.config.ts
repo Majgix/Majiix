@@ -7,8 +7,8 @@ export default defineConfig({
     process.env["NODE_ENV"] === "development"
       ? {
           https: {
-            key: readFileSync("../certs/localhost-pem.key"),
-            cert: readFileSync("../certs/localhost.pem"),
+            key: readFileSync("../certs/localhost.key.pem"),
+            cert: readFileSync("../certs/localhost.crt.pem"),
           },
         }
       : undefined,
