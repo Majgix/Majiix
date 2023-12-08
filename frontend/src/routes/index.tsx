@@ -6,6 +6,7 @@ export default function Home() {
     <main>
       <Title>{import.meta.env.VITE_APP_TITLE}</Title>
       <h1>Welcome to {import.meta.env.VITE_APP_TITLE}!</h1>
+      <h2 class="h2"> Uniting the World, One video at a time</h2>
       <Render />
     </main>
   );

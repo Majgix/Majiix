@@ -17,6 +17,8 @@
   "dependencies": {
     "@solidjs/meta": "0.29.1",
     "@solidjs/router": "0.8.4",
+    "@types/dom-mediacapture-transform": "^0.1.9",
+    "@types/dom-webcodecs": "^0.1.11",
     "hls.js": "1.4.12",
     "solid-js": "1.8.5",
     "solid-start": "0.3.10"
@@ -27,7 +29,7 @@
     "postcss": "8.4.31",
     "prettier": "3.0.3",
     "solid-start-node": "0.3.10",
-    "typescript": "5.2.2",
+    "typescript": "^5.3.2",
     "vite": "4.5.0"
   },
   "engines": {
