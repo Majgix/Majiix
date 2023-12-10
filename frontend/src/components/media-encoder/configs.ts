@@ -1,3 +1,6 @@
+//!Config values for the encoders
+  //!We just hardcode these for now
+
 // Video encoder config
 const videoEncoderConfig = {
     encoderConfig: {
