@@ -14,7 +14,7 @@ export default function Render() {
   let muxerSenderWorker: Worker | null;
 
   const createWorkers = () => {
-        //create new web workers for A/V frames captureeeeeeeeeeeeee
+      //create new web workers for A/V frames captureeeeeeeeeeeeee
       videoStreamWorker = new Worker("./media-encoder/video_capture.ts");
       audioStreamWorker = new Worker("./media-encoder/audio_capture.ts");
 
@@ -24,11 +24,12 @@ export default function Render() {
 
       //create send worker
       muxerSenderWorker = new Worker("./muxer_sender.ts");
-
   }
 
   const startStream = async () => {
-      const stream = await navigator.mediaDevices.getUserMedia({
+    createWorkers();
+
+      await navigator.mediaDevices.getUserMedia({
             video: true,
             audio: true,
       }).then(mediaStream => {
@@ -43,12 +44,6 @@ export default function Render() {
         const videoTrack = mediaStream.getVideoTracks()[0];
         const audioTrack = mediaStream.getAudioTracks()[0];
 
-        // Initialize muxer-sender
-        muxerSenderWorker?.postMessage({
-          type: 'muxersenderini',
-          muxerSenderConfig: muxerSenderConfig,
-        });
-
         //create a MediaStreamTrackProcessor, which
         //breaks media tracks into individual frames
         if (videoTrack) {
@@ -58,6 +53,7 @@ export default function Render() {
 
           //read frames flowing through the MediaStreamTrack
           const videoFrameStream = trackProcessor.readable;
+
 
           // Initialize video encoder
           videoEncoderWorker?.postMessage({ 
@@ -70,19 +66,9 @@ export default function Render() {
           // Transfer the readable stream to the worker
           videoStreamWorker?.postMessage({
             type: "stream",
-            video_stream: VideoFrame
-          });
-
-          videoStreamWorker?.postMessage({
-            type: "stream",
             vstream: videoFrameStream
-          },
-            [videoFrameStream] 
-          )
-        
-          //Transfer the readable streams to the worker
-          videoStreamWorker?.postMessage({ type: 'stream', vstream: videoFrameStream }, [videoFrameStream]);
-
+          }, [videoFrameStream]);
+    
         } else if(audioTrack) {
           const trackProcessor = new MediaStreamTrackProcessor({
             track: audioTrack,
@@ -99,16 +85,27 @@ export default function Render() {
           });
 
           //transfer readable audio stream to the worker
-          audioStreamWorker?.postMessage({ type: 'stream', astream: audioFrameStream }, [audioFrameStream]);
+          audioStreamWorker?.postMessage({ 
+            type: 'stream', 
+            astream: audioFrameStream 
+          }, [audioFrameStream]);
         }
         else {
           console.error("No audio or video track found!");
         }
+
+        // Initialize muxer-sender
+        muxerSenderWorker?.postMessage({
+          type: 'muxersenderini',
+          muxerSenderConfig: muxerSenderConfig,
+        });
+      }).catch(err => {
+        console.error(err);
       });
   };
   return (
     <div>
-      <button class="increment" onClick={startStream}>Start Capture</button>
+      <button class="increment" onClick={startStream}>Start a Call</button>
       {mediaElement()}
     </div>
   );
