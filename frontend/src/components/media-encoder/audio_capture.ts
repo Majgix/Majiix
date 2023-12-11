@@ -41,7 +41,7 @@ const mainLoop = async (frameReader: ReadableStreamDefaultReader<AudioData>): Pr
             const cloneFrame = audioFrame.clone();
             self.postMessage({
                 type: "audioframe",
-                clkms: Date.now(),
+                time: Date.now(),
                 data: cloneFrame,
             });
             audioFrame.close();
