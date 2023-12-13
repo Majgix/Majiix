@@ -1,5 +1,5 @@
 //!Config values for the encoders
-  //!We just hardcode these for now
+//!We just hardcode these for now
 
 // Video encoder config
 const videoEncoderConfig = {
@@ -19,7 +19,7 @@ const videoEncoderConfig = {
 const audioEncoderConfig = {
   encoderConfig: {
     codec: 'opus',
-    sampleRate: 48000,
+    sampleRate: 48000, //Hz
     memberOfChannels: 1,
     bitrate: 32000,
   },
@@ -31,7 +31,7 @@ const muxerSenderConfig = {
   videoMaxQueSize: 100,
   
   maxInflightAudioRequests: 100,
-  maxInflightVideoREquests: 50,
+  maxInflightVideoRequests: 50,
 
   urlHostPort: '',
   UrlPath: '',

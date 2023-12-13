@@ -5,19 +5,19 @@ let stopped = false;
 let mainLoopInterval: any | undefined = undefined;
 let isMainLoopInExecution = false;
 
-const mainLoop = async (frameReader: ReadableStreamDefaultReader<AudioData>): Promise<boolean> => {
+async function mainLoop(frameReader: ReadableStreamDefaultReader<AudioData>): Promise<boolean> {
     if(isMainLoopInExecution){
         return false;
     }
     isMainLoopInExecution = true;
 
     try {
-        if (stopped == true){
+        if (stopped === true){
             if (mainLoopInterval != undefined){
               clearInterval(mainLoopInterval);
               mainLoopInterval = undefined;
             }
-            sendMessageToMain(WORKER_PREFIX, "info", 78);
+            sendMessageToMain(WORKER_PREFIX, "info", "exited");
             isMainLoopInExecution = false;
             return false;
         }

@@ -8,7 +8,7 @@ let isMainLoopInExecution = false;
 let timeCheck: any | undefined = undefined;
 let estimatedFps = 0;
 
-const mainLoop = async(frameReader: ReadableStreamDefaultReader<VideoFrame>): Promise<boolean> => {
+async function mainLoop (frameReader: ReadableStreamDefaultReader<VideoFrame>): Promise<boolean>{
     if (isMainLoopInExecution) {
         return false;
     }
@@ -50,6 +50,7 @@ const mainLoop = async(frameReader: ReadableStreamDefaultReader<VideoFrame>): Pr
                 if (timeCheck === undefined) {
                     timeCheck = Date.now();
                 }
+
                 const nowMs = Date.now();
                 if (nowMs >= timeCheck + 1000) {
                     sendMessageToMain(WORKER_PREFIX, "debug", `estimated fps last sec: ${estimatedFps}`);
@@ -82,12 +83,12 @@ self.addEventListener('message', async (event: MessageEvent) => {
                 return;
             }
 
-            const vFrameStream = data.vStream as ReadableStream<VideoFrame>;
-            const vFrameReader = vFrameStream.getReader();
+            const videoFrameStream = data.videoStream as ReadableStream<VideoFrame>;
+            const videoFrameReader = videoFrameStream.getReader();
 
             sendMessageToMain(WORKER_PREFIX, "info", "Received streams from main page, starting worker loop");
 
-            mainLoopInterval = setInterval(() => mainLoop(vFrameReader), 1);
+            mainLoopInterval = setInterval(() => mainLoop(videoFrameReader), 1);
             break;
         default:
             sendMessageToMain(WORKER_PREFIX, "error", "Invalid message received.");

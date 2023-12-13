@@ -14,7 +14,7 @@ export default function Render() {
   let muxerSenderWorker: Worker | null;
 
   const createWorkers = () => {
-      //create new web workers for A/V frames captureeeeeeeeeeeeee
+      //create new web workers for A/V frames capture
       videoStreamWorker = new Worker("./media-encoder/video_capture.ts");
       audioStreamWorker = new Worker("./media-encoder/audio_capture.ts");
 
@@ -79,7 +79,7 @@ export default function Render() {
 
           //Initialize audio encoder
           audioEncoderWorker?.postMessage({
-            type: "aencodeini",
+            type: "aencoderini",
             encoderConfig: audioEncoderConfig.encoderConfig,
             encoderMaxQueSize: audioEncoderConfig.encoderMaxQueSize,
           });
