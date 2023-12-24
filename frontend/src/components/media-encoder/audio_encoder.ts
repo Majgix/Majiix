@@ -14,7 +14,6 @@ let lastAudioMetadata: EncodedAudioChunkMetadata | undefined;
 
 let audioEncoder: AudioEncoder | null = null;
 
-
 //Encoder
 const initAudioEncoder = {
     output: handleAudioChunk,
@@ -47,11 +46,11 @@ function handleAudioChunk(chunk: EncodedAudioChunk, metadata: EncodedAudioChunkM
     };
 
     sendMessageToMain(WORKER_PREFIX, "info", `
-    Chunk created. sId: ${message.seqId}
-    Timestamp: ${chunk.timestamp},
-    Duration: ${chunk.duration},
-    type: ${chunk.type},
-    size:  ${chunk.byteLength}
+        Chunk created. sId: ${message.seqId}
+        Timestamp: ${chunk.timestamp},
+        Duration: ${chunk.duration},
+        type: ${chunk.type},
+        size:  ${chunk.byteLength}
     `);
 
 
@@ -60,7 +59,7 @@ function handleAudioChunk(chunk: EncodedAudioChunk, metadata: EncodedAudioChunkM
 
 self.addEventListener("message", async (event: MessageEvent) => {
     const message = event.data;
-    const type = message.type;
+    const type = event.data.type;
 
     if (workerState == State.Created) {
         workerState = State.Instatiated;
@@ -80,7 +79,7 @@ self.addEventListener("message", async (event: MessageEvent) => {
             lastAudioMetadata = undefined;
             return;
         case "aencoderini":
-            const encoderConfig = message.encoderConfig;
+            const encoderConfig: AudioEncoderConfig = message.encoderConfig;
 
             audioEncoder = new AudioEncoder(initAudioEncoder);
             audioEncoder.configure(encoderConfig);
@@ -92,7 +91,7 @@ self.addEventListener("message", async (event: MessageEvent) => {
             sendMessageToMain(WORKER_PREFIX, "info", "Encoder initialized");
             return;
         case "audioframe":
-            const audioFrame = event.data.audioframe;
+            const audioFrame: AudioData = event.data.audioframe;
 
             if (audioEncoder!.encodeQueueSize > encoderMaxQueSize) {
                 // Too many frames in encoder, drop this frame

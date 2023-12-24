@@ -30,7 +30,7 @@ function arrayBufferToBase64(buffer: any) {
     return btoa(binary);
 }
 
-function serializeMetadata(metadata: EncodedAudioChunkMetadata | EncodedVideoChunkMetadata | undefined) {
+function serializeMetadata(metadata: EncodedAudioChunkMetadata | EncodedVideoChunkMetadata | undefined ) {
     let ret = undefined;
     if (isMetadataValid(metadata)) {
         let newData: any = {};

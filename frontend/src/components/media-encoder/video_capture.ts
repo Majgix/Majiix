@@ -6,7 +6,7 @@ let mainLoopInterval: any | undefined = undefined;
 let isMainLoopInExecution = false;
 
 let timeCheck: any | undefined = undefined;
-let estimatedFps = 0;
+let estimatedFps = 0; //frame rate per second
 
 async function mainLoop (frameReader: ReadableStreamDefaultReader<VideoFrame>): Promise<boolean>{
     if (isMainLoopInExecution) {
