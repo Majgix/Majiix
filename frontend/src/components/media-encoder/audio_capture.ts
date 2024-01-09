@@ -9,10 +9,11 @@ async function mainLoop(frameReader: ReadableStreamDefaultReader<AudioData>): Pr
     if(isMainLoopInExecution){
         return false;
     }
+
     isMainLoopInExecution = true;
 
     try {
-        if (stopped === true){
+        if (stopped){
             if (mainLoopInterval != undefined){
               clearInterval(mainLoopInterval);
               mainLoopInterval = undefined;
@@ -41,7 +42,7 @@ async function mainLoop(frameReader: ReadableStreamDefaultReader<AudioData>): Pr
             const cloneFrame = audioFrame.clone();
             self.postMessage({
                 type: "audioframe",
-                time: Date.now(),
+                clkms: Date.now(), // clock in milliseconds
                 data: cloneFrame,
             });
             audioFrame.close();

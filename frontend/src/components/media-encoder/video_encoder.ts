@@ -89,7 +89,7 @@ self.addEventListener("message", async (event: MessageEvent) => {
             const videoFrame: VideoFrame = event.data.videoFrame;
 
             if (videoEncoder!.encodeQueueSize > encoderMaxQueueSize) {
-                sendMessageToMain(WORKER_PREFIX, "dropped", {time: Date.now(), timestamp: videoFrame.timestamp, msg: "Dropped encoding video frame"});
+                sendMessageToMain(WORKER_PREFIX, "dropped", {clkms: Date.now(), timestamp: videoFrame.timestamp, msg: "Dropped encoding video frame"});
                 videoFrame.close();
                 insertNextKeyframe = true;
             } else {

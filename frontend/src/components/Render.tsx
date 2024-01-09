@@ -37,7 +37,6 @@ export default function Render() {
         const v_element = document.createElement("video");
         v_element.srcObject = mediaStream;
         v_element.play();
-
         setMediaElement(v_element);
 
         //Create the media tracks

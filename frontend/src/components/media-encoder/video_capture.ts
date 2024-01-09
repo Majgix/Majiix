@@ -42,7 +42,7 @@ async function mainLoop (frameReader: ReadableStreamDefaultReader<VideoFrame>): 
                 //Send frame to process 
                 self.postMessage({
                     type: "videoframe",
-                    time: Date.now(),
+                    clkms: Date.now(), //clock in milliseconds
                     data: videoFrame
                 });
 
