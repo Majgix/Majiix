@@ -1,4 +1,5 @@
 import "./utils";
+import { sendMessageToMain } from "./utils";
 const WORKER_PREFIX = "[AUDIO-CAPTURE]";
 
 let stopped = false;

@@ -2,7 +2,7 @@
 //!We just hardcode these for now
 
 // Video encoder config
-const videoEncoderConfig = {
+export const videoEncoderConfig = {
     encoderConfig: {
       codec: 'avc1.42001e', //see https://en.wikipedia.org/wiki/Advanced_Video_Coding
       width: 320,
@@ -16,7 +16,7 @@ const videoEncoderConfig = {
 };
   
 // Audio encoder config
-const audioEncoderConfig = {
+export const audioEncoderConfig = {
   encoderConfig: {
     codec: 'opus',
     sampleRate: 48000, //Hz
@@ -26,16 +26,17 @@ const audioEncoderConfig = {
   encoderMaxQueSize: 10,
 };
 
-const muxerSenderConfig = {
+export const muxerSenderConfig = {
   audioMaxQueSize: 200,
   videoMaxQueSize: 100,
   
   maxInflightAudioRequests: 100,
   maxInflightVideoRequests: 50,
 
-  urlHostPort: '',
-  UrlPath: '',
+  urlHostPort: '127.0.0.1',
+  UrlPath: '4443',
 
   maxAgeChunks: 120,
 }
 
+export {};

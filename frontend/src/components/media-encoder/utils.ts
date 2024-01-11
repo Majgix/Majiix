@@ -1,11 +1,11 @@
-enum State {
+export enum State {
     Created = "created",
     Instatiated = "instatiated",
     Running = "running",
     Stopped = "stopped",
 }
 
-function sendMessageToMain(prefix: string, type: any, data: any){
+export function sendMessageToMain(prefix: string, type: any, data: any){
     if(type === "debug" || type === "info" || type === "warning"){
         data = prefix + " " + data;
     }
@@ -15,22 +15,23 @@ function sendMessageToMain(prefix: string, type: any, data: any){
     });
 }
 
-function isMetadataValid(metadata: EncodedAudioChunkMetadata | EncodedVideoChunkMetadata | undefined) {
+export function isMetadataValid(metadata: EncodedAudioChunkMetadata | EncodedVideoChunkMetadata | undefined) {
     return metadata != undefined && 'decoderConfig' in metadata;
 }
 
-function arrayBufferToBase64(buffer: any) {
+export function arrayBufferToBase64(buffer: any) {
     let binary = '';  
     const bytes = new Uint8Array(buffer);
     const len = bytes.byteLength;
     for (let i = 0; i < len; i++){
         binary += String.fromCharCode(bytes[i] as number);
     }
+
     
     return btoa(binary);
 }
 
-function serializeMetadata(metadata: EncodedAudioChunkMetadata | EncodedVideoChunkMetadata | undefined ) {
+export function serializeMetadata(metadata: EncodedAudioChunkMetadata | EncodedVideoChunkMetadata | undefined ) {
     let ret = undefined;
     if (isMetadataValid(metadata)) {
         let newData: any = {};
@@ -48,3 +49,5 @@ function serializeMetadata(metadata: EncodedAudioChunkMetadata | EncodedVideoChu
     }
     return ret;
 }
+
+export {}; 

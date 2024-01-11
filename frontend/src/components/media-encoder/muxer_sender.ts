@@ -1,4 +1,5 @@
 import "./utils";
+import { State, sendMessageToMain } from './utils';
 
 const WORKER_PREFIX = "[MUXER_SENDER]";
 
@@ -342,3 +343,5 @@ async function createWebTransportRequestPromise(
   }
   return null;
 }
+
+export {};

@@ -1,4 +1,5 @@
 import "./utils";
+import { State, sendMessageToMain, serializeMetadata } from "./utils";
 const WORKER_PREFIX = "[VIDEO-ENCODER]";
 
 let frame_delivered_counter = 0;

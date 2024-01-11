@@ -1,5 +1,6 @@
 import { createSignal } from "solid-js";
 import "./Render.css";
+import { videoEncoderConfig, audioEncoderConfig, muxerSenderConfig } from "./media-encoder/configs"
 
 export default function Render() {
   const [mediaElement, setMediaElement] = createSignal<HTMLVideoElement | null>(
@@ -15,15 +16,23 @@ export default function Render() {
 
   const createWorkers = () => {
       //create new web workers for A/V frames capture
-      videoStreamWorker = new Worker("./media-encoder/video_capture.ts");
-      audioStreamWorker = new Worker("./media-encoder/audio_capture.ts");
+      videoStreamWorker = new Worker(new URL("./media-encoder/video_capture.ts", import.meta.url), {
+        type: 'module',
+      });
+      audioStreamWorker = new Worker(new URL("./media-encoder/audio_capture.ts", import.meta.url), {
+        type: 'module',
+      });
 
       //create new workers for A/V frames encode
-      videoEncoderWorker = new Worker("./video_encoder.ts");
-      audioEncoderWorker = new Worker("./audio_encoder.ts");
-
+      videoEncoderWorker = new Worker(new URL("./media-encoder/video_encoder.ts", import.meta.url), {
+        type: 'module',
+      });
+  
       //create send worker
-      muxerSenderWorker = new Worker("./muxer_sender.ts");
+      muxerSenderWorker = new Worker(new URL("./media-encoder/muxer_sender.ts", import.meta.url),{
+        type: 'module',
+      });
+      
   }
 
   const startStream = async () => {

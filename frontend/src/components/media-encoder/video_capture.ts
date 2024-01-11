@@ -1,4 +1,5 @@
 import "./utils";
+import { sendMessageToMain } from "./utils";
 const WORKER_PREFIX = "[VIDEO-CAPTURE]";
 
 let stopped = false;
@@ -83,12 +84,15 @@ self.addEventListener('message', async (event: MessageEvent) => {
                 return;
             }
 
-            const videoFrameStream = data.videoStream as ReadableStream<VideoFrame>;
-            const videoFrameReader = videoFrameStream.getReader();
+            const videoFrameStream = data?.videoStream as ReadableStream<VideoFrame>;
+            if (videoFrameStream) {
+                
+              const videoFrameReader = videoFrameStream.getReader();
 
-            sendMessageToMain(WORKER_PREFIX, "info", "Received streams from main page, starting worker loop");
+              sendMessageToMain(WORKER_PREFIX, "info", "Received streams from main page, starting worker loop");
 
-            mainLoopInterval = setInterval(() => mainLoop(videoFrameReader), 1);
+              mainLoopInterval = setInterval(() => mainLoop(videoFrameReader), 1);
+            }
             break;
         default:
             sendMessageToMain(WORKER_PREFIX, "error", "Invalid message received.");

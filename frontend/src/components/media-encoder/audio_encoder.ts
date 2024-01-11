@@ -1,4 +1,5 @@
 import "./utils";
+import { State, sendMessageToMain, isMetadataValid, serializeMetadata } from "./utils";
 const WORKER_PREFIX = "[AUDIO-ENCODER]";
 const INSERT_METADATA_EVERY_AUDIO_FRAMES = 20;
 
