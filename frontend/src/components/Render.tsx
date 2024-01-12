@@ -94,7 +94,7 @@ export default function Render() {
 
           //transfer readable audio stream to the worker
           audioStreamWorker?.postMessage({ 
-            type: 'stream', 
+            type: 'astream', 
             astream: audioFrameStream 
           }, [audioFrameStream]);
         }

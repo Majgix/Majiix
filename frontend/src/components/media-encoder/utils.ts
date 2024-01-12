@@ -5,19 +5,19 @@ export enum State {
     Stopped = "stopped",
 }
 
-export function sendMessageToMain(prefix: string, type: any, data: any){
-    if(type === "debug" || type === "info" || type === "warning"){
-        data = prefix + " " + data;
-    }
-    self.postMessage({
-        type: type,
-        data: data
-    });
-}
+//export function sendMessageToMain(prefix: string, type: any, data: any){
+//   if(type === "debug" || type === "info" || type === "warning"){
+//       data = prefix + " " + data;
+//   }
+//   self.postMessage({
+//       type: type,
+//       data: data
+//   });
+//
 
-export function isMetadataValid(metadata: EncodedAudioChunkMetadata | EncodedVideoChunkMetadata | undefined) {
-    return metadata != undefined && 'decoderConfig' in metadata;
-}
+//export function isMetadataValid(metadata: EncodedAudioChunkMetadata | EncodedVideoChunkMetadata | undefined) {
+//    return metadata != undefined && 'decoderConfig' in metadata;
+//}
 
 export function arrayBufferToBase64(buffer: any) {
     let binary = '';  
@@ -31,23 +31,23 @@ export function arrayBufferToBase64(buffer: any) {
     return btoa(binary);
 }
 
-export function serializeMetadata(metadata: EncodedAudioChunkMetadata | EncodedVideoChunkMetadata | undefined ) {
-    let ret = undefined;
-    if (isMetadataValid(metadata)) {
-        let newData: any = {};
-
-        //Copy all enumerable own properties
-        newData['decoderConfig'] = Object.assign({}, metadata?.decoderConfig);
-
-        if (metadata?.decoderConfig?.description){
-            newData['decoderConfig']['descriptionInBase64'] = arrayBufferToBase64(metadata?.decoderConfig.description);
-            delete newData.description;
-        }
-        //Encode
-        const encoder = new TextEncoder();
-        ret = encoder.encode(JSON.stringify(newData));
-    }
-    return ret;
-}
+//export function serializeMetadata(metadata: EncodedAudioChunkMetadata | EncodedVideoChunkMetadata | undefined ) {
+//    let ret = undefined;
+//    if (isMetadataValid(metadata)) {
+//        let newData: any = {};
+//
+//        //Copy all enumerable own properties
+//        newData['decoderConfig'] = Object.assign({}, metadata?.decoderConfig);
+//
+//        if (metadata?.decoderConfig?.description){
+//            newData['decoderConfig']['descriptionInBase64'] = arrayBufferToBase64(metadata?.decoderConfig.description);
+//            delete newData.description;
+//        }
+//        //Encode
+//        const encoder = new TextEncoder();
+//        ret = encoder.encode(JSON.stringify(newData));
+//    }
+//    return ret;
+//}
 
 export {}; 
