@@ -1,13 +1,8 @@
-import { State } from './utils';
+import { State } from "./utils";
 
 let workerState = State.Created;
 
 // Default values
-const maxFlightRequests = {
-  audio: 4,
-  video: 2,
-};
-
 const inFlightRequests = {
   audio: {},
   video: {},
@@ -39,7 +34,7 @@ interface ChunkData {
   chunk: any;
 }
 
-self.addEventListener('message', async function (event) {
+self.addEventListener("message", async function (event) {
   if (workerState === State.Created) {
     workerState = State.Instatiated;
   }
@@ -102,7 +97,7 @@ self.addEventListener('message', async function (event) {
     clkms: Date.now(),
     inFlightAudioReqNum: getInflightRequestsLength(inFlightRequests.audio),
     inFlightVideoReqNum: getInflightRequestsLength(inFlightRequests.video),
-    efficiencyData: efficiencyData
+    efficiencyData: efficiencyData,
   });
 
   return;
@@ -176,7 +171,6 @@ async function createWebTransportRequestPromise(
     uniWriter.write(objectBytes);
 
     const p = uniWriter.close();
-
   } catch (err: any) {
     console.error(err);
   }
@@ -184,4 +178,3 @@ async function createWebTransportRequestPromise(
 }
 
 export {};
-
