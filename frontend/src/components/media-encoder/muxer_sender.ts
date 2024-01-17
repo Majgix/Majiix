@@ -17,24 +17,12 @@ const abortController = new AbortController();
 // WebTransport data
 let wTransport: WebTransport | null = null;
 
-// Packager efficiency
-let efficiencyData = {
-  audio: {
-    totalPackagerBytesSent: 0,
-    totalPayloadBytesSent: 0,
-  },
-  video: {
-    totalPackagerBytesSent: 0,
-    totalPayloadBytesSent: 0,
-  },
-};
-
 interface ChunkData {
   mediaType: string;
   chunk: any;
 }
 
-self.addEventListener("message", async function (event) {
+self.addEventListener("message", async function (event: MessageEvent) {
   if (workerState === State.Created) {
     workerState = State.Instatiated;
   }
@@ -50,7 +38,7 @@ self.addEventListener("message", async function (event) {
     case "stop":
       try {
         abortController.abort();
-        await Promise.all(getAllInflightRequetsArray());
+        await Promise.all(getAllInflightRequestsArray());
 
         if (wTransport != null) {
           await wTransport.close();
@@ -91,15 +79,6 @@ self.addEventListener("message", async function (event) {
     sendChunkToTransport(chunkData);
   }
 
-  // Report stats
-  self.postMessage({
-    type: "sendstats",
-    clkms: Date.now(),
-    inFlightAudioReqNum: getInflightRequestsLength(inFlightRequests.audio),
-    inFlightVideoReqNum: getInflightRequestsLength(inFlightRequests.video),
-    efficiencyData: efficiencyData,
-  });
-
   return;
 });
 
@@ -110,11 +89,8 @@ function sendChunkToTransport(chunkData: ChunkData) {
   return createRequests(chunkData);
 }
 
-function getInflightRequestsLength(inFlightRequestsType: any) {
-  return Object.keys(inFlightRequestsType).length;
-}
 
-function getAllInflightRequetsArray() {
+function getAllInflightRequestsArray() {
   const arrAudio = Object.values(inFlightRequests.audio);
   const arrVideo = Object.values(inFlightRequests.video);
 
@@ -170,7 +146,7 @@ async function createWebTransportRequestPromise(
 
     uniWriter.write(objectBytes);
 
-    const p = uniWriter.close();
+    const p  = uniWriter.close();
   } catch (err: any) {
     console.error(err);
   }

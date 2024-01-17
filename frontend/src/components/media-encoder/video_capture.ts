@@ -1,6 +1,7 @@
 async function videoCaptureLoop(
   frameReader: ReadableStreamDefaultReader<VideoFrame>,
 ): Promise<boolean> {
+  console.log("Starting video Capture Worker");
   try {
     frameReader.read().then((result: ReadableStreamReadResult<VideoFrame>) => {
       if (result.done) {
@@ -29,7 +30,7 @@ self.addEventListener("message", async (event: MessageEvent) => {
   switch (type) {
     case "stop":
       break;
-    case "stream":
+    case "videostream":
       const videoFrameStream = data?.videoStream as ReadableStream<VideoFrame>;
       if (videoFrameStream) {
         const videoFrameReader = videoFrameStream.getReader();

@@ -8,18 +8,18 @@ export default function Render() {
   );
 
   //Current Workers
-  let videoStreamWorker: Worker | null;
-  let audioStreamWorker: Worker | null;
+  let videoCaptureWorker: Worker | null;
+  let audioCaptureWorker: Worker | null;
   let videoEncoderWorker: Worker | null;
   let audioEncoderWorker: Worker | null;
   let muxerSenderWorker: Worker | null;
 
   const createWorkers = () => {
       //create new web workers for A/V frames capture
-      videoStreamWorker = new Worker(new URL("./media-encoder/video_capture.ts", import.meta.url), {
+      videoCaptureWorker = new Worker(new URL("./media-encoder/video_capture.ts", import.meta.url), {
         type: 'module',
       });
-      audioStreamWorker = new Worker(new URL("./media-encoder/audio_capture.ts", import.meta.url), {
+      audioCaptureWorker = new Worker(new URL("./media-encoder/audio_capture.ts", import.meta.url), {
         type: 'module',
       });
 
@@ -35,6 +35,28 @@ export default function Render() {
       
   }
 
+  function processWorkerMessage (e: MessageEvent) {
+    if (e.data.type === 'videoframe') {
+      const videoFrame = e.data.data;
+
+      videoEncoderWorker?.postMessage({ type: "videoframe", videoframe: videoFrame }, [videoFrame]);
+    } else if (e.data.type === 'audioframe') {
+       const audioFrame = e.data.data;
+
+       audioEncoderWorker?.postMessage({ type: "audioframe", audioframe: audioFrame });
+
+      // Chunks
+    } else if (e.data.type === 'videochunk') {
+        const chunk = e.data.chunk;
+
+        muxerSenderWorker?.postMessage({ type: "videochunk", chunk: chunk });
+    } else if (e.data.type === 'audiochunk') {
+        const chunk = e.data.chunk;
+
+        muxerSenderWorker?.postMessage({ type: "audiochunk", chunk: chunk });
+    }
+  }
+
   const startStream = async () => {
     createWorkers();
 
@@ -47,10 +69,33 @@ export default function Render() {
         v_element.srcObject = mediaStream;
         v_element.play();
         setMediaElement(v_element);
-
+        
+        videoCaptureWorker?.addEventListener('message', function (e) {
+          processWorkerMessage(e);
+        });
+        audioCaptureWorker?.addEventListener('message', function (e) {
+          processWorkerMessage(e);
+        });
+        videoEncoderWorker?.addEventListener('message', function (e) {
+          processWorkerMessage(e);
+        });
+        audioEncoderWorker?.addEventListener('message', function (e) {
+          processWorkerMessage(e);
+        });
+        muxerSenderWorker?.addEventListener('message', function (e) {
+          processWorkerMessage(e);
+        });
         //Create the media tracks
         const videoTrack = mediaStream.getVideoTracks()[0];
         const audioTrack = mediaStream.getAudioTracks()[0];
+
+        
+
+        // Initialize muxer-sender
+        muxerSenderWorker?.postMessage({
+          type: 'muxersenderini',
+          muxerSenderConfig: muxerSenderConfig,
+        });
 
         //create a MediaStreamTrackProcessor, which
         //breaks media tracks into individual frames
@@ -62,7 +107,6 @@ export default function Render() {
           //read frames flowing through the MediaStreamTrack
           const videoFrameStream = trackProcessor.readable;
 
-
           // Initialize video encoder
           videoEncoderWorker?.postMessage({ 
             type: "vencoderini", 
@@ -72,8 +116,8 @@ export default function Render() {
           });
 
           // Transfer the readable stream to the worker
-          videoStreamWorker?.postMessage({
-            type: "stream",
+          videoCaptureWorker?.postMessage({
+            type: "videostream",
             vstream: videoFrameStream
           }, [videoFrameStream]);
     
@@ -93,20 +137,14 @@ export default function Render() {
           });
 
           //transfer readable audio stream to the worker
-          audioStreamWorker?.postMessage({ 
-            type: 'astream', 
+          audioCaptureWorker?.postMessage({ 
+            type: 'audiostream', 
             astream: audioFrameStream 
           }, [audioFrameStream]);
         }
         else {
           console.error("No audio or video track found!");
         }
-
-        // Initialize muxer-sender
-        muxerSenderWorker?.postMessage({
-          type: 'muxersenderini',
-          muxerSenderConfig: muxerSenderConfig,
-        });
       }).catch(err => {
         console.error(err);
       });

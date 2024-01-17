@@ -33,7 +33,7 @@ self.addEventListener("message", async (event: MessageEvent) => {
   switch (type) {
     case "stop":
       break;
-    case "astream":
+    case "audiostream":
       const audioFrameStream = data.audioStream as ReadableStream<AudioData>;
       const audioFrameReader = audioFrameStream.getReader();
 
