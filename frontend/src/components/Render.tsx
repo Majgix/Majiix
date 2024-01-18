@@ -55,7 +55,7 @@ export default function Render() {
 
         muxerSenderWorker?.postMessage({ type: "audiochunk", chunk: chunk });
     }
-  }
+ } 
 
   const startStream = async () => {
     createWorkers();
