@@ -1,5 +1,5 @@
 import { State } from "./utils";
-
+console.log("Initiating muxer-sender...");
 let workerState = State.Created;
 
 // Default values
@@ -23,6 +23,7 @@ interface ChunkData {
 }
 
 self.addEventListener("message", async function (event: MessageEvent) {
+  console.log("muxer-sender listening for events!");
   if (workerState === State.Created) {
     workerState = State.Instatiated;
   }
@@ -62,7 +63,7 @@ self.addEventListener("message", async function (event: MessageEvent) {
   let mediaType = "unknown";
   if (type === "videochunk") {
     mediaType = "video";
-  } else if (type === "audichunk") {
+  } else if (type === "audiochunk") {
     mediaType = "audio";
   }
 
@@ -88,7 +89,6 @@ function sendChunkToTransport(chunkData: ChunkData) {
   }
   return createRequests(chunkData);
 }
-
 
 function getAllInflightRequestsArray() {
   const arrAudio = Object.values(inFlightRequests.audio);
@@ -127,7 +127,7 @@ async function createWebTransportSession(url: string) {
 async function createWebTransportRequestPromise(
   mediaType: string,
   chunkType: string,
-) {
+): Promise<void> {
   if (wTransport === null) {
     return;
   }
@@ -146,11 +146,11 @@ async function createWebTransportRequestPromise(
 
     uniWriter.write(objectBytes);
 
-    const p  = uniWriter.close();
+    const p = uniWriter.close();
   } catch (err: any) {
     console.error(err);
   }
-  return null;
+  return;
 }
 
 export {};

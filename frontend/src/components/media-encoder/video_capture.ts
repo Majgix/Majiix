@@ -25,6 +25,7 @@ async function videoCaptureLoop(
 }
 
 self.addEventListener("message", async (event: MessageEvent) => {
+  console.log("video capture worker listening for events!");
   const { type, data } = event.data;
 
   switch (type) {
@@ -35,10 +36,8 @@ self.addEventListener("message", async (event: MessageEvent) => {
       if (videoFrameStream) {
         const videoFrameReader = videoFrameStream.getReader();
 
-        setInterval(() => videoCaptureLoop(videoFrameReader), 1);
+        await videoCaptureLoop(videoFrameReader);
       }
-      break;
-    default:
       break;
   }
 });

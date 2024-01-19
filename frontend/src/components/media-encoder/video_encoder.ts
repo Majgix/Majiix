@@ -29,6 +29,7 @@ function handleVideoChunk(chunk: EncodedVideoChunk) {
 }
 
 self.addEventListener("message", async (event: MessageEvent) => {
+  console.log("video encoder worker listening for events");
   if (workerState == State.Created) {
     workerState = State.Instatiated;
   }

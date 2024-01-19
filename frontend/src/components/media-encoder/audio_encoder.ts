@@ -1,5 +1,6 @@
 import "./utils";
 import { State } from "./utils";
+console.log("audio encoder worker loaded");
 let workerState = State.Created;
 
 let audioEncoder: AudioEncoder | null = null;
@@ -22,6 +23,7 @@ function handleAudioChunk(chunk: EncodedAudioChunk) {
 }
 
 self.addEventListener("message", async (event: MessageEvent) => {
+  console.log("audio encoder worker listening for events!");
   const message = event.data;
   const type = event.data.type;
 

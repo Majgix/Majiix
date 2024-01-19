@@ -6,7 +6,10 @@ export default function Home() {
     <main>
       <Title>{import.meta.env.VITE_APP_TITLE}</Title>
       <h1>Refine your network.</h1>
-      <h2>Majiix is the simple, open and low-latency platform for realtime collaboration on the web.</h2>
+      <h2>
+        Majiix is the simple, open and low-latency platform for realtime
+        collaboration on the web.
+      </h2>
       <Render />
     </main>
   );
