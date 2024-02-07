@@ -19,8 +19,14 @@ h1 {
   font-size: 4rem;
   font-weight: 100;
   line-height: 1.1;
-  margin: 4rem auto;
+  margin: 2rem auto;
   max-width: 14rem;
+}
+
+h2 {
+  color: #335d91;
+  font-size: 2rem;
+  font-weight: 75;
 }
 
 p {
