@@ -1,4 +1,4 @@
-//! This file contains implementations related to WebTransport
+//!This file contains implementations related to WebTransport
 use bytes::Bytes;
 use h3::{
     ext::Protocol,
