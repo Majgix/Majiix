@@ -1,11 +1,11 @@
-// configuration for the video encoder
+// Video encoder config
 export const videoEncoderConfig = {
-  encoderConfig: {
-    codec: "avc1.42001e", //see https://en.wikipedia.org/wiki/Advanced_Video_Coding
+  encoderConfig: {    
+    codec: "av01.0.15M.10", //see https://en.wikipedia.org/wiki/AV1 
     width: 320,
     height: 180,
     bitrate: 2000_000, //2 Mbps
-    framerate: 30,
+    framerate: 30, //fps
     latencyMode: "realtime", //Send  1 chunk per frame
   },
   encoderMaxQueSize: 2,
