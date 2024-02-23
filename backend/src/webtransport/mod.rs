@@ -1,3 +1,4 @@
+use crate::logger::init_logging;
 use bytes::Bytes;
 use clap::Parser;
 use h3::{
@@ -10,8 +11,7 @@ use hyper::Method;
 use lazy_static::lazy_static;
 use rustls::{Certificate, PrivateKey};
 use std::{net::SocketAddr, path::PathBuf, sync::Arc, time::Duration};
-use tracing::{error, info, level_filters::LevelFilter, trace_span};
-use tracing_subscriber::EnvFilter;
+use tracing::{error, info, trace_span};
 
 // list of ALPN values that are supported by the WebTransport protocol
 // see https://datatracker.ietf.org/doc/html/rfc9114#name-connection-establishment
@@ -137,6 +137,7 @@ async fn handle_connection(
                         info!("Peer initiating a webtransport session");
 
                         let session = WebTransportSession::accept(req, stream, conn).await?;
+                        info!("Established webtransport session");
 
                         handle_session(session).await?;
 
@@ -187,16 +188,4 @@ where
             }
         }
     }
-}
-
-fn init_logging() {
-    let env_filter = EnvFilter::builder()
-        .with_default_directive(LevelFilter::INFO.into())
-        .from_env_lossy();
-
-    tracing_subscriber::fmt()
-        .with_target(true)
-        .with_level(true)
-        .with_env_filter(env_filter)
-        .init();
 }

@@ -1,7 +1,4 @@
-//!Config values for the encoders
-//!We just hardcode these for now
-
-// Video encoder config
+// configuration for the video encoder
 export const videoEncoderConfig = {
   encoderConfig: {
     codec: "avc1.42001e", //see https://en.wikipedia.org/wiki/Advanced_Video_Coding

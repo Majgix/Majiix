@@ -95,6 +95,7 @@ export default function Render() {
       .then((mediaStream) => {
         //create a video element and connect it to a webcam
         const v_element = document.createElement("video");
+        v_element.muted = true;
         v_element.srcObject = mediaStream;
         v_element.play();
         setMediaElement(v_element);

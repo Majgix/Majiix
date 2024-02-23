@@ -4,11 +4,9 @@ use std::str::FromStr;
 
 use dotenv::dotenv;
 
-pub struct Env {
-    pub port: u16,
-}
+pub struct Env {}
 
-fn num<F: FromStr>(name: &str, default: F) -> F
+fn _num<F: FromStr>(name: &str, default: F) -> F
 where
     <F as FromStr>::Err: std::fmt::Debug,
 {
@@ -21,7 +19,5 @@ where
 pub fn load() -> Env {
     dotenv().ok();
 
-    Env {
-        port: num("PORT", 4443),
-    }
+    Env {}
 }

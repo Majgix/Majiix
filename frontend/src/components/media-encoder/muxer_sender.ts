@@ -1,3 +1,5 @@
+// Handles output formats and streams
+
 import { State } from "./utils";
 console.log("Initiating muxer-sender...");
 let workerState = State.Created;
@@ -120,6 +122,7 @@ async function createWebTransportSession(url: string) {
   }
   wTransport = new WebTransport(url);
   await wTransport.ready;
+  console.log(`Created WebTransport session at https://${urlHostPort}:${urlPath}`);
 
   wTransport.closed;
 }
