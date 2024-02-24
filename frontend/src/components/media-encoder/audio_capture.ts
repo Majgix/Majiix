@@ -1,4 +1,4 @@
-console.log("audio capture worker loaded");
+//console.log("audio capture worker loaded");
 async function audioCaptureLoop(
   frameReader: ReadableStreamDefaultReader<AudioData>,
 ): Promise<boolean> {
@@ -39,10 +39,13 @@ self.addEventListener("message", async (event: MessageEvent) => {
     case "stop":
       break;
     case "audiostream":
-      const audioFrameStream = data.audioStream as ReadableStream<AudioData>;
-      const audioFrameReader = audioFrameStream.getReader();
+      const audioFrameStream = data?.audioStream as ReadableStream<AudioData>;
 
-      await audioCaptureLoop(audioFrameReader);
+      if(audioFrameStream) {
+        const audioFrameReader = audioFrameStream.getReader();
+        await audioCaptureLoop(audioFrameReader);
+      }
+
       break;
   }
 });

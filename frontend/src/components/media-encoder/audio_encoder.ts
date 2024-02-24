@@ -1,6 +1,6 @@
 import "./utils";
 import { State } from "./utils";
-console.log("audio encoder worker loaded");
+
 let workerState = State.Created;
 
 let audioEncoder: AudioEncoder | null = null;

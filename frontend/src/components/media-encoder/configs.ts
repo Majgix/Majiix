@@ -17,7 +17,7 @@ export const audioEncoderConfig = {
   encoderConfig: {
     codec: "opus",
     sampleRate: 48000, //Hz
-    memberOfChannels: 1,
+    numberOfChannels: 1,
     bitrate: 32000,
   },
   encoderMaxQueSize: 10,

@@ -11,12 +11,12 @@ export default function Render() {
     null,
   );
 
-  //Current Workers
-  let videoCaptureWorker: Worker | null;
-  let audioCaptureWorker: Worker | null;
-  let videoEncoderWorker: Worker | null;
-  let audioEncoderWorker: Worker | null;
-  let muxerSenderWorker: Worker | null;
+  // Declare Workers
+  let videoCaptureWorker: Worker;
+  let audioCaptureWorker: Worker;
+  let videoEncoderWorker: Worker;
+  let audioEncoderWorker: Worker;
+  let muxerSenderWorker: Worker;
 
   const createWorkers = () => {
     //create new web workers for A/V frames capture
@@ -93,7 +93,7 @@ export default function Render() {
         audio: true,
       })
       .then((mediaStream) => {
-        //create a video element and connect it to a webcam
+        // Create a video element and connect it to a webcam
         const v_element = document.createElement("video");
         v_element.muted = true;
         v_element.srcObject = mediaStream;
@@ -115,7 +115,8 @@ export default function Render() {
         muxerSenderWorker?.addEventListener("message", function (e) {
           processWorkerMessage(e);
         });
-        //Create the media tracks
+        
+        // Create media stream tracks
         const videoTrack = mediaStream.getVideoTracks()[0];
         const audioTrack = mediaStream.getAudioTracks()[0];
 
@@ -144,14 +145,12 @@ export default function Render() {
           });
 
           // Transfer the readable stream to the worker
-          videoCaptureWorker?.postMessage(
-            {
+          videoCaptureWorker?.postMessage({
               type: "videostream",
               vstream: videoFrameStream,
-            },
-            [videoFrameStream],
+            }, [videoFrameStream],
           );
-        } else if (audioTrack) {
+        } if (audioTrack) {
           const trackProcessor = new MediaStreamTrackProcessor({
             track: audioTrack,
           });
@@ -167,12 +166,10 @@ export default function Render() {
           });
 
           //transfer readable audio stream to the worker
-          audioCaptureWorker?.postMessage(
-            {
+          audioCaptureWorker?.postMessage({
               type: "audiostream",
               astream: audioFrameStream,
-            },
-            [audioFrameStream],
+            }, [audioFrameStream],
           );
         } else {
           console.error("No audio or video track found!");
