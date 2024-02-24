@@ -10,8 +10,8 @@ const inFlightRequests = {
   video: {},
 };
 
-let urlHostPort = "127.0.0.1";
-let urlPath = "4443";
+let urlHostPort: string;
+let urlPath: string;
 
 // Inflight req abort signal
 const abortController = new AbortController();
@@ -53,7 +53,15 @@ self.addEventListener("message", async function (event: MessageEvent) {
       return;
     case "muxersenderini":
       if (workerState !== State.Instatiated) {
+        console.log("error, received init message in wrong state");
         return;
+      }
+
+      if ('urlHostPort' in event.data.muxerSenderConfig) {
+        urlHostPort = event.data.muxerSenderConfig.urlHostPort;
+      }
+      if ('urlPath' in event.data.muxerSenderConfig) {
+        urlPath = event.data.muxerSenderConfig.urlPath;
       }
 
       await createWebTransportSession(`https://${urlHostPort}:${urlPath}`);

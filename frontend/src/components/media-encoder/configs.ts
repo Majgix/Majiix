@@ -31,7 +31,7 @@ export const muxerSenderConfig = {
   maxInflightVideoRequests: 50,
 
   urlHostPort: "127.0.0.1",
-  UrlPath: "4443",
+  urlPath: "4443",
 
   maxAgeChunks: 120,
 };
