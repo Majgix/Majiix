@@ -1,0 +1,17 @@
+name: Fast merge-queue queueing allowance
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  linting:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: ["20"]
+
+    steps:
+      - name:
+        run: echo hooray
