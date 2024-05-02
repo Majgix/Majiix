@@ -1,5 +1,4 @@
 // Handles output formats and streams
-
 import { State } from "./utils";
 console.log("Initiating muxer-sender...");
 let workerState = State.Created;
@@ -44,7 +43,7 @@ self.addEventListener("message", async function (event: MessageEvent) {
         await Promise.all(getAllInflightRequestsArray());
 
         if (wTransport != null) {
-          await wTransport.close();
+          wTransport.close();
           wTransport = null;
         }
       } catch (err) {
@@ -153,11 +152,11 @@ async function createWebTransportRequestPromise(
       chunkType,
     };
 
-    const objectBytes = new TextEncoder().encode(JSON.stringify(chunkObject));
+    // const objectBytes = new TextEncoder().encode(JSON.stringify(chunkObject));
 
-    uniWriter.write(objectBytes);
+    uniWriter.write(chunkObject);
 
-    const p = uniWriter.close();
+    const _ = uniWriter.close();
   } catch (err: any) {
     console.error(err);
   }

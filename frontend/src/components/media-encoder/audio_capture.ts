@@ -1,7 +1,6 @@
-//console.log("audio capture worker loaded");
 async function audioCaptureLoop(
   frameReader: ReadableStreamDefaultReader<AudioData>,
-): Promise<boolean> {
+) {
   console.log("starting audio capture loop");
   try {
     const result = await frameReader.read();
