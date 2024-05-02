@@ -1,16 +1,24 @@
 use crate::logger::init_logging;
 use bytes::Bytes;
 use clap::Parser;
+use h3::quic;
 use h3::{
     ext::Protocol,
-    quic::{RecvDatagramExt, SendDatagramExt},
+    quic::{RecvDatagramExt, SendDatagramExt, SendStreamUnframed},
     server::Connection,
 };
-use h3_webtransport::server::WebTransportSession;
+use h3_webtransport::SessionId;
+use h3_webtransport::{server::WebTransportSession, stream};
 use hyper::Method;
 use lazy_static::lazy_static;
 use rustls::{Certificate, PrivateKey};
+use std::collections::HashMap;
+use std::io::Cursor;
+use std::time::Instant;
 use std::{net::SocketAddr, path::PathBuf, sync::Arc, time::Duration};
+use std::{u32, u64, usize, vec};
+use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite};
+use tokio::sync::{Mutex, RwLock};
 use tracing::{error, info, trace_span};
 
 // list of ALPN values that are supported by the WebTransport protocol
@@ -25,8 +33,9 @@ lazy_static! {
     ];
 }
 
+const COPY_BLOCK_BYTES: usize = 2048;
+
 #[derive(Debug, Parser)]
-#[clap(name = "wt_server")]
 pub struct WebTransportOpt {
     #[clap(
         short,
@@ -123,9 +132,12 @@ pub async fn start(opt: WebTransportOpt) -> anyhow::Result<()> {
     Ok(())
 }
 
+const CACHE_CLEAN_UP_PERIOD_MS: u32 = 10000;
+
 async fn handle_connection(
     mut conn: Connection<h3_quinn::Connection, Bytes>,
 ) -> anyhow::Result<()> {
+    let mem_files = MemFiles::new(CACHE_CLEAN_UP_PERIOD_MS);
     loop {
         match conn.accept().await {
             Ok(Some((req, stream))) => {
@@ -135,11 +147,26 @@ async fn handle_connection(
                 match req.method() {
                     &Method::CONNECT if ext.get::<Protocol>() == Some(&Protocol::WEB_TRANSPORT) => {
                         info!("Peer initiating a webtransport session");
-
-                        let session = WebTransportSession::accept(req, stream, conn).await?;
                         info!("Established webtransport session");
 
-                        handle_session(session).await?;
+                        let uri = req.uri().clone();
+
+                        let path = urlencoding::decode(uri.path())?;
+                        info!("got path {:?}", path);
+
+                        let session = WebTransportSession::accept(req, stream, conn).await?;
+
+                        let ingest_session_id = session.session_id();
+
+                        handle_ingest_stream(
+                            session,
+                            ingest_session_id,
+                            path.to_string(),
+                            uri.query(),
+                            mem_files,
+                        )
+                        .await?;
+                        // handle_delivery_stream(session, delivery_session_id, url_path, url_query_string, mem_files);
 
                         return Ok(());
                     }
@@ -167,25 +194,266 @@ async fn handle_connection(
     Ok(())
 }
 
-async fn handle_session<C>(session: WebTransportSession<C, Bytes>) -> anyhow::Result<()>
+async fn handle_ingest_stream<C>(
+    session: WebTransportSession<C, Bytes>,
+    ingest_session_id: SessionId,
+    url_path: String,
+    _url_query_string: Option<&str>,
+    mut mem_files: MemFiles,
+) -> anyhow::Result<()>
 where
     C: 'static
         + Send
         + h3::quic::Connection<Bytes>
         + RecvDatagramExt<Buf = Bytes>
         + SendDatagramExt<Bytes>,
+    <C::SendStream as h3::quic::SendStream<Bytes>>::Error:
+        'static + std::error::Error + Send + Sync + Into<std::io::Error>,
+    <C::RecvStream as h3::quic::RecvStream>::Error:
+        'static + std::error::Error + Send + Sync + Into<std::io::Error>,
+    stream::BidiStream<C::BidiStream, Bytes>:
+        quic::BidiStream<Bytes> + Unpin + AsyncWrite + AsyncRead,
+    <stream::BidiStream<C::BidiStream, Bytes> as quic::BidiStream<Bytes>>::SendStream:
+        Unpin + AsyncWrite + Send + Sync,
+    <stream::BidiStream<C::BidiStream, Bytes> as quic::BidiStream<Bytes>>::RecvStream:
+        Unpin + AsyncRead + Send + Sync,
+    C::SendStream: Send + Unpin,
+    C::RecvStream: Send + Unpin,
+    C::BidiStream: Send + Unpin,
+    stream::SendStream<C::SendStream, Bytes>: AsyncWrite,
+    C::BidiStream: SendStreamUnframed<Bytes>,
+    C::SendStream: SendStreamUnframed<Bytes> + Send,
+    <C as h3::quic::Connection<Bytes>>::OpenStreams: Send,
+    <C as h3::quic::Connection<Bytes>>::BidiStream: Sync,
 {
-    loop {
-        tokio::select! {
-            datagram = session.accept_datagram() => {
-                let datagram = datagram?;
-                if let Some((_, datagram)) = datagram {
-                    info!("Responding with {datagram:?}");
+    let session = Arc::new(RwLock::new(session));
+    // let mut asset_id = "".to_string();
 
-                    session.send_datagram(datagram)?;
-                    info!("Finished sending datagram")
+    // let path_elements = url_path
+    //     .split('/')
+    //     .map(|p| p.to_string())
+    //     .collect::<Vec<String>>();
+    // //let path_elements = url_path.split("/").collect::<Vec<String>>();
+
+    // if path_elements.len() >= 3 {
+    //     asset_id = path_elements[2];
+    // }
+
+    //let path_elements = url_path
+    //    .split('/')
+    //    .map(|p| p.to_string())
+    //    .collect::<Vec<String>>();
+    //let asset_id = path_elements.get(2).unwrap(); //.map(|s| s.as_str()).unwrap();
+
+    //if asset_id.is_empty() {
+    //    error!(
+    //        "{:?} could not parse the asset id from the URL path",
+    //        ingest_session_id
+    //    );
+    //};
+    let asset_id = {
+        let path_elements: Vec<&str> = url_path.split('/').collect();
+        if path_elements.len() >= 3 {
+            //Some(path_elements[2].to_string())
+            path_elements[2].to_string()
+        } else {
+            //None
+            format!(
+                "{:?} path element should be more than three characters long",
+                path_elements
+            )
+        }
+    };
+
+    // Handle incoming uni_directional streams
+    let webtransport_task = {
+        let session = session.clone();
+
+        tokio::spawn(async move {
+            let session = session.read().await;
+
+            while let Ok(uni_stream) = session.accept_uni().await {
+                if let Some((_id, mut uni_stream)) = uni_stream {
+                    let headers_size_bytes = [0u8; 8];
+                    let file_header = FileHeader::new();
+
+                    let header_size = u64::from_be_bytes(headers_size_bytes);
+                    let header_bytes = vec![0u8; header_size as usize];
+                    // let file_header = file_header.clone();
+
+                    //MediaPackager::decode(&header_bytes, file_header);
+                    info!("Header decoded");
+
+                    let (media_type, is_init) = get_asset_info(&file_header).unwrap();
+
+                    let f = mem_files
+                        .add_new_empty_file(&asset_id, &media_type, is_init, file_header)
+                        .await;
+                    info!(
+                        "new file added, asset_id: {}, media_type: {}",
+                        asset_id, media_type
+                    );
+
+                    let mut buf = Vec::new();
+
+                    // if let Err(e) = uni_stream.read_to_end(&mut buf).await {
+                    //     error!("Error reading from unidirectional stream: {}", e);
+                    // }
+
+                    let n = uni_stream.read_to_end(&mut buf).await;
+                    let _ = f.write(n.unwrap());
                 }
             }
+        });
+    };
+
+    webtransport_task;
+
+    Ok(())
+}
+
+pub struct MemFiles {
+    // use an Arc to enable concurrent access to MemFile instances
+    data_map: HashMap<String, Arc<MemFile>>,
+
+    // files_lock used to read or write files
+    files_lock: Mutex<RwLock<()>>,
+}
+
+impl MemFiles {
+    pub fn new(house_keeping_period_ms: u32) -> MemFiles {
+        let fs = MemFiles {
+            data_map: HashMap::new(),
+            files_lock: Mutex::new(RwLock::new(())),
+        };
+        return fs;
+    }
+
+    pub async fn add_new_empty_file(
+        &mut self,
+        asset_id: &str,
+        media_type: &str,
+        is_init: bool,
+        headers: FileHeader,
+    ) -> Arc<MemFile> {
+        let cache_key = get_cache_key(asset_id, media_type, is_init);
+        let new_file = MemFile::new(headers);
+
+        self.files_lock.lock().await;
+        let insert_file = self
+            .data_map
+            .insert(cache_key.to_string(), new_file.into())
+            .unwrap();
+        //.insert(cache_key.to_string(), (new_file).into());
+
+        insert_file.clone()
+    }
+}
+
+pub struct MemFile {
+    pub name: String,
+    headers: FileHeader,
+    pub received_at: Instant,
+    buffer: Vec<u8>,
+    max_age: u64,
+    eof: bool,
+    lock: RwLock<()>,
+}
+
+impl MemFile {
+    pub fn new(headers: FileHeader) -> Self {
+        let max_age = get_max_age_from_controller(&headers.cache_control, u64::MAX);
+        MemFile {
+            name: String::new(),
+            headers,
+            received_at: Instant::now(),
+            buffer: Vec::new(),
+            max_age,
+            eof: false,
+            lock: RwLock::new(()),
         }
+    }
+
+    pub fn write(&self, n: usize) -> anyhow::Result<()> {
+        Ok(())
+    }
+}
+
+pub struct FileHeader {
+    cache_control: String,
+    media_type: String,
+    timestamp: Instant,
+    chunk_type: String,
+}
+
+impl FileHeader {
+    pub fn new() -> Self {
+        FileHeader {
+            media_type: String::new(),
+            cache_control: String::new(),
+            chunk_type: String::new(),
+            timestamp: Instant::now(), //chrono::offset::Utc::now(),
+        }
+    }
+}
+
+pub struct MediaPackager;
+
+impl MediaPackager {
+    pub fn decode(header_bytes: &[u8], mut decoded_header: FileHeader) -> anyhow::Result<()> {
+        let mut buf = Cursor::new(header_bytes);
+
+        let mut data_byte = [0u8; 1];
+        let _ = buf.read_exact(&mut data_byte);
+
+        // Decode MediaType
+        if (data_byte[0] & 0b11000000) == 0b01000000 {
+            decoded_header.media_type = "video".to_string();
+        } else {
+            decoded_header.media_type = "audio".to_string();
+        }
+
+        // Decode ChunkType
+        match data_byte[0] & 0b00110000 {
+            0b00010000 => decoded_header.chunk_type = "key".to_string(),
+            0b00100000 => decoded_header.chunk_type = "init".to_string(),
+            _ => (),
+        }
+
+        Ok(())
+    }
+}
+
+pub fn get_asset_info(header: &FileHeader) -> anyhow::Result<(String, bool)> {
+    let media_type = &header.media_type;
+    let is_init = true;
+
+    Ok((media_type.to_string(), is_init))
+}
+
+pub fn get_max_age_from_controller(s: &str, default: u64) -> u64 {
+    let re = regex::Regex::new(r"max-age=(\d+)").unwrap();
+    let captures = re.captures(s);
+
+    if let Some(caps) = captures {
+        if let Some(max_age) = caps.get(1) {
+            match max_age.as_str().parse::<u64>() {
+                Ok(val) => val,
+                Err(_) => default,
+            };
+        }
+    }
+    default
+}
+
+pub fn get_cache_key(asset_id: &str, media_type: &str, is_init: bool) -> String {
+    if is_init {
+        format!("{}/{media_type}/init", asset_id)
+    } else {
+        format!(
+            "{}/{media_type}/{asset_id}",
+            asset_id,
+            media_type = media_type,
+        )
     }
 }

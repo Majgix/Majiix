@@ -141,7 +141,7 @@ export default function Render() {
             type: "vencoderini",
             encoderConfig: videoEncoderConfig.encoderConfig,
             encoderMaxQueSize: videoEncoderConfig.encoderMaxQueSize,
-            keyframeEver: videoEncoderConfig.keyframeEvery,
+            keyframeEvery: videoEncoderConfig.keyframeEvery,
           });
 
           // Transfer the readable stream to the worker
