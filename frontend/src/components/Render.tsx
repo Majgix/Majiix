@@ -19,7 +19,7 @@ export default function Render() {
   let muxerSenderWorker: Worker;
 
   const createWorkers = () => {
-    //create new web workers for A/V frames capture
+    // Create new web workers for A/V frames capture
     videoCaptureWorker = new Worker(
       new URL("./media-encoder/video_capture.ts", import.meta.url),
       {
@@ -57,6 +57,7 @@ export default function Render() {
   };
 
   function processWorkerMessage(e: MessageEvent) {
+    // Send video frames to video encoder
     if (e.data.type === "videoframe") {
       const videoFrame = e.data.data;
 
@@ -64,6 +65,7 @@ export default function Render() {
         { type: "videoframe", videoframe: videoFrame },
         [videoFrame],
       );
+    // Send to audio encoder if audio
     } else if (e.data.type === "audioframe") {
       const audioFrame = e.data.data;
 
@@ -72,7 +74,7 @@ export default function Render() {
         audioframe: audioFrame,
       });
 
-      // Chunks
+      // Chunks are sent to MuxerSender for muxing and forwarding to relay
     } else if (e.data.type === "videochunk") {
       const chunk = e.data.chunk;
 
@@ -126,14 +128,12 @@ export default function Render() {
           muxerSenderConfig: muxerSenderConfig,
         });
 
-        //create a MediaStreamTrackProcessor, which
-        //breaks media tracks into individual frames
         if (videoTrack) {
           const trackProcessor = new MediaStreamTrackProcessor({
             track: videoTrack,
           });
 
-          //read frames flowing through the MediaStreamTrack
+          // Read frames flowing through the MediaStreamTrack
           const videoFrameStream = trackProcessor.readable;
 
           // Initialize video encoder
@@ -151,28 +151,29 @@ export default function Render() {
             }, [videoFrameStream],
           );
         } if (audioTrack) {
-          const trackProcessor = new MediaStreamTrackProcessor({
-            track: audioTrack,
-          });
+           // Generate a stream of audio frames
+           const trackProcessor = new MediaStreamTrackProcessor({
+             track: audioTrack,
+           });
 
-          //reader
-          const audioFrameStream = trackProcessor.readable;
+           // Build a readable stream
+           const audioFrameStream = trackProcessor.readable;
 
-          //Initialize audio encoder
-          audioEncoderWorker?.postMessage({
-            type: "aencoderini",
-            encoderConfig: audioEncoderConfig.encoderConfig,
-            encoderMaxQueSize: audioEncoderConfig.encoderMaxQueSize,
-          });
+           //Initialize audio encoder
+           audioEncoderWorker?.postMessage({
+             type: "aencoderini",
+             encoderConfig: audioEncoderConfig.encoderConfig,
+             encoderMaxQueSize: audioEncoderConfig.encoderMaxQueSize,
+           });
 
-          //transfer readable audio stream to the worker
-          audioCaptureWorker?.postMessage({
-              type: "audiostream",
-              astream: audioFrameStream,
-            }, [audioFrameStream],
-          );
+           // Transfer readable audio stream to the worker
+           audioCaptureWorker?.postMessage({
+               type: "audiostream",
+               astream: audioFrameStream,
+             }, [audioFrameStream],
+           );
         } else {
-          console.error("No audio or video track found!");
+            console.error("No audio or video track found!");
         }
       })
       .catch((err) => {
@@ -181,7 +182,7 @@ export default function Render() {
   };
   return (
     <div>
-      <button class="increment" onClick={startStream}>
+      <button class="start-session-button" onClick={startStream}>
         Start a session
       </button>
       {mediaElement()}
