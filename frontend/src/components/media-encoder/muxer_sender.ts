@@ -92,12 +92,6 @@ self.addEventListener("message", async function (event: MessageEvent) {
   return;
 });
 
-function sendChunkToTransport(chunkData: ChunkData) {
-  if (chunkData == null) {
-    return;
-  }
-  return createRequests(chunkData);
-}
 
 function getAllInflightRequestsArray() {
   const arrAudio = Object.values(inFlightRequests.audio);
@@ -105,6 +99,27 @@ function getAllInflightRequestsArray() {
 
   return arrAudio.concat(arrVideo);
 }
+
+
+async function createWebTransportSession(url: string) {
+  if (wTransport != null) {
+    return;
+  }
+  wTransport = new WebTransport(url);
+  await wTransport.ready;
+  console.log(`Created WebTransport session at https://${urlHostPort}:${urlPath}`);
+
+  wTransport.closed;
+}
+
+
+function sendChunkToTransport(chunkData: ChunkData) {
+  if (chunkData == null) {
+    return;
+  }
+  return createRequests(chunkData);
+}
+
 
 function createRequests(chunkData: ChunkData) {
   if (chunkData !== null) {
@@ -123,16 +138,6 @@ function createRequests(chunkData: ChunkData) {
   }
 }
 
-async function createWebTransportSession(url: string) {
-  if (wTransport != null) {
-    return;
-  }
-  wTransport = new WebTransport(url);
-  await wTransport.ready;
-  console.log(`Created WebTransport session at https://${urlHostPort}:${urlPath}`);
-
-  wTransport.closed;
-}
 
 async function createWebTransportRequestPromise(
   mediaType: string,
@@ -156,7 +161,7 @@ async function createWebTransportRequestPromise(
 
     uniWriter.write(chunkObject);
 
-    const _ = uniWriter.close();
+    uniWriter.close();
   } catch (err: any) {
     console.error(err);
   }
