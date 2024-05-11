@@ -1,7 +1,7 @@
 // Video encoder config
 export const videoEncoderConfig = {
   encoderConfig: {    
-    codec: "av01.0.17M08", //see https://en.wikipedia.org/wiki/AV1 
+    codec: "av01.0.04M.08", //see https://en.wikipedia.org/wiki/AV1 
     width: 320,
     height: 180,
     bitrate: 2000_000, //2 Mbps
