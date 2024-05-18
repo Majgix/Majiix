@@ -13,15 +13,17 @@ use hyper::Method;
 use lazy_static::lazy_static;
 use rustls::{Certificate, PrivateKey};
 use std::collections::HashMap;
-use std::io::Cursor;
+use std::io::{self, Cursor};
 use std::time::Instant;
 use std::{net::SocketAddr, path::PathBuf, sync::Arc, time::Duration};
-use std::{u32, u64, usize, vec};
+use std::{u32, u64, u8, usize, vec};
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite};
 use tokio::sync::{Mutex, RwLock};
 use tracing::{error, info, trace_span};
 
-// list of ALPN values that are supported by the WebTransport protocol
+// List of ALPN values that are supported by the WebTransport protocol
+// ALPN -> Application Layer Protocol Negotiaton allows the Application
+// layer to negotiate which protocol will be used within the TLS connection
 // see https://datatracker.ietf.org/doc/html/rfc9114#name-connection-establishment
 lazy_static! {
     pub static ref ALPN: Vec<Vec<u8>> = vec![
@@ -32,8 +34,6 @@ lazy_static! {
         b"h3-29".to_vec(),
     ];
 }
-
-const COPY_BLOCK_BYTES: usize = 2048;
 
 #[derive(Debug, Parser)]
 pub struct WebTransportOpt {
@@ -150,6 +150,7 @@ async fn handle_connection(
                         info!("Established webtransport session");
 
                         let uri = req.uri().clone();
+                        info!("Got uri {:?}", uri);
 
                         let path = urlencoding::decode(uri.path())?;
                         info!("got path {:?}", path);
@@ -226,35 +227,12 @@ where
     <C as h3::quic::Connection<Bytes>>::OpenStreams: Send,
     <C as h3::quic::Connection<Bytes>>::BidiStream: Sync,
 {
-    let session = Arc::new(RwLock::new(session));
-    // let mut asset_id = "".to_string();
+    let session = RwLock::new(session);
 
-    // let path_elements = url_path
-    //     .split('/')
-    //     .map(|p| p.to_string())
-    //     .collect::<Vec<String>>();
-    // //let path_elements = url_path.split("/").collect::<Vec<String>>();
-
-    // if path_elements.len() >= 3 {
-    //     asset_id = path_elements[2];
-    // }
-
-    //let path_elements = url_path
-    //    .split('/')
-    //    .map(|p| p.to_string())
-    //    .collect::<Vec<String>>();
-    //let asset_id = path_elements.get(2).unwrap(); //.map(|s| s.as_str()).unwrap();
-
-    //if asset_id.is_empty() {
-    //    error!(
-    //        "{:?} could not parse the asset id from the URL path",
-    //        ingest_session_id
-    //    );
-    //};
     let asset_id = {
         let path_elements: Vec<&str> = url_path.split('/').collect();
+        info!("path element: {:?}", path_elements);
         if path_elements.len() >= 3 {
-            //Some(path_elements[2].to_string())
             path_elements[2].to_string()
         } else {
             //None
@@ -266,65 +244,55 @@ where
     };
 
     // Handle incoming uni_directional streams
-    let webtransport_task = {
-        let session = session.clone();
+    tokio::spawn(async move {
+        let session = session.read().await;
 
-        tokio::spawn(async move {
-            let session = session.read().await;
+        while let Ok(uni_stream) = session.accept_uni().await {
+            if let Some((_id, mut uni_stream)) = uni_stream {
+                let headers_size_bytes = [0u8; 8];
+                let file_header = FileHeader::new();
 
-            while let Ok(uni_stream) = session.accept_uni().await {
-                if let Some((_id, mut uni_stream)) = uni_stream {
-                    let headers_size_bytes = [0u8; 8];
-                    let file_header = FileHeader::new();
+                let header_size = u64::from_be_bytes(headers_size_bytes);
+                let header_bytes = vec![0u8; header_size as usize];
+                // let file_header = file_header.clone();
 
-                    let header_size = u64::from_be_bytes(headers_size_bytes);
-                    let header_bytes = vec![0u8; header_size as usize];
-                    // let file_header = file_header.clone();
+                //MediaPackager::decode(&header_bytes, file_header);
+                info!("Header decoded");
 
-                    //MediaPackager::decode(&header_bytes, file_header);
-                    info!("Header decoded");
+                let (media_type, is_init) = get_asset_info(&file_header).unwrap();
 
-                    let (media_type, is_init) = get_asset_info(&file_header).unwrap();
+                let mut f = mem_files
+                    .add_new_empty_file(&asset_id, &media_type, is_init, file_header)
+                    .await;
+                info!(
+                    "new file added, asset_id: {}, media_type: {}",
+                    asset_id, media_type
+                );
 
-                    let f = mem_files
-                        .add_new_empty_file(&asset_id, &media_type, is_init, file_header)
-                        .await;
-                    info!(
-                        "new file added, asset_id: {}, media_type: {}",
-                        asset_id, media_type
-                    );
+                let mut buf = Vec::new();
 
-                    let mut buf = Vec::new();
-
-                    // if let Err(e) = uni_stream.read_to_end(&mut buf).await {
-                    //     error!("Error reading from unidirectional stream: {}", e);
-                    // }
-
-                    let n = uni_stream.read_to_end(&mut buf).await;
-                    let _ = f.write(n.unwrap());
-                }
+                let n = uni_stream.read(&mut buf).await;
+                let _ = f.write(&n.unwrap().to_ne_bytes());
             }
-        });
-    };
-
-    webtransport_task;
+        }
+    });
 
     Ok(())
 }
 
 pub struct MemFiles {
     // use an Arc to enable concurrent access to MemFile instances
-    data_map: HashMap<String, Arc<MemFile>>,
-
+    // data_map: HashMap<String, Arc<MemFile>>,
+    data_map: HashMap<String, MemFile>,
     // files_lock used to read or write files
-    files_lock: Mutex<RwLock<()>>,
+    files_lock: Mutex<()>,
 }
 
 impl MemFiles {
-    pub fn new(house_keeping_period_ms: u32) -> MemFiles {
-        let fs = MemFiles {
+    pub fn new(house_keeping_period_ms: u32) -> Self {
+        let fs = Self {
             data_map: HashMap::new(),
-            files_lock: Mutex::new(RwLock::new(())),
+            files_lock: Mutex::new(()),
         };
         return fs;
     }
@@ -335,7 +303,7 @@ impl MemFiles {
         media_type: &str,
         is_init: bool,
         headers: FileHeader,
-    ) -> Arc<MemFile> {
+    ) -> MemFile {
         let cache_key = get_cache_key(asset_id, media_type, is_init);
         let new_file = MemFile::new(headers);
 
@@ -346,7 +314,7 @@ impl MemFiles {
             .unwrap();
         //.insert(cache_key.to_string(), (new_file).into());
 
-        insert_file.clone()
+        insert_file //.clone()
     }
 }
 
@@ -363,7 +331,7 @@ pub struct MemFile {
 impl MemFile {
     pub fn new(headers: FileHeader) -> Self {
         let max_age = get_max_age_from_controller(&headers.cache_control, u64::MAX);
-        MemFile {
+        Self {
             name: String::new(),
             headers,
             received_at: Instant::now(),
@@ -374,8 +342,11 @@ impl MemFile {
         }
     }
 
-    pub fn write(&self, n: usize) -> anyhow::Result<()> {
-        Ok(())
+    pub fn write(&mut self, p: &[u8]) -> anyhow::Result<usize, io::Error> {
+        let _lock = self.lock.write();
+        self.buffer.extend_from_slice(&p);
+
+        Ok(p.len())
     }
 }
 
@@ -388,7 +359,7 @@ pub struct FileHeader {
 
 impl FileHeader {
     pub fn new() -> Self {
-        FileHeader {
+        Self {
             media_type: String::new(),
             cache_control: String::new(),
             chunk_type: String::new(),
@@ -400,7 +371,7 @@ impl FileHeader {
 pub struct MediaPackager;
 
 impl MediaPackager {
-    pub fn decode(header_bytes: &[u8], mut decoded_header: FileHeader) -> anyhow::Result<()> {
+    pub fn decode(header_bytes: &[u8], mut header: FileHeader) -> anyhow::Result<()> {
         let mut buf = Cursor::new(header_bytes);
 
         let mut data_byte = [0u8; 1];
@@ -408,15 +379,15 @@ impl MediaPackager {
 
         // Decode MediaType
         if (data_byte[0] & 0b11000000) == 0b01000000 {
-            decoded_header.media_type = "video".to_string();
+            header.media_type = "video".to_string();
         } else {
-            decoded_header.media_type = "audio".to_string();
+            header.media_type = "audio".to_string();
         }
 
         // Decode ChunkType
         match data_byte[0] & 0b00110000 {
-            0b00010000 => decoded_header.chunk_type = "key".to_string(),
-            0b00100000 => decoded_header.chunk_type = "init".to_string(),
+            0b00010000 => header.chunk_type = "key".to_string(),
+            0b00100000 => header.chunk_type = "init".to_string(),
             _ => (),
         }
 
