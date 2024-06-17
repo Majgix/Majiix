@@ -23,6 +23,8 @@ interface ChunkData {
   chunk: any;
 }
 
+let tracks = {};
+
 self.addEventListener("message", async function (event: MessageEvent) {
   console.log("muxer-sender listening for events!");
   if (workerState === State.Created) {
@@ -61,6 +63,10 @@ self.addEventListener("message", async function (event: MessageEvent) {
       }
       if ('urlPath' in event.data.muxerSenderConfig) {
         urlPath = event.data.muxerSenderConfig.urlPath;
+      }
+
+      if ('moqTracks' in event.data.muxerSenderConfig) {
+        tracks = event.data.muxerSenderConfig.moqTracks;
       }
 
       await createWebTransportSession(`https://${urlHostPort}:${urlPath}`);
@@ -117,11 +123,11 @@ function sendChunkToTransport(chunkData: ChunkData) {
   if (chunkData == null) {
     return;
   }
-  return createRequests(chunkData);
+  return createRequest(chunkData);
 }
 
 
-function createRequests(chunkData: ChunkData) {
+function createRequest(chunkData: ChunkData) {
   if (chunkData !== null) {
     const ret = [];
     const mediaType = chunkData.mediaType;
@@ -137,7 +143,6 @@ function createRequests(chunkData: ChunkData) {
     ret;
   }
 }
-
 
 async function createWebTransportRequestPromise(
   mediaType: string,
