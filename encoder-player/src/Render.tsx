@@ -65,7 +65,7 @@ export default function Render() {
         { type: "videoframe", videoframe: videoFrame },
         [videoFrame],
       );
-    // Send to audio encoder if audio
+    // Send to audio encoder if audioframe
     } else if (e.data.type === "audioframe") {
       const audioFrame = e.data.data;
 

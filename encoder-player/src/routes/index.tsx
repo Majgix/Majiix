@@ -1,5 +1,5 @@
 import { Title } from "solid-start";
-import Render from "~/components/Render";
+import Render from "../Render";
 
 export default function Home() {
   return (
