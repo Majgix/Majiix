@@ -14,6 +14,30 @@ interface Params {
   [key: string]: any,
 }
 
+export function moqCreate(): Moqt {
+  const moqtObject: Moqt = {
+    wt: null,
+    controlReader: null,
+    controlWriter: null,
+    controlStream: {
+      writable: new WritableStream(),
+      readable: new ReadableStream(),
+    },
+  };
+  return moqtObject;
+}
+
+export async function moqClose(moqt: Moqt) {
+  if (moqt.controlWriter != null) {
+      await moqt.controlWriter.close()
+      moqt.controlWriter = null
+    }
+    if (moqt.wt != null) {
+      moqt.wt.close()
+      moqt.wt = null
+    }
+}
+
 export async function moqCreateControlStream(moqt: Moqt): Promise<void> {
   if (moqt.wt === null) {
     throw new Error("Null WebTransport Session");

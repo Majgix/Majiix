@@ -87,6 +87,7 @@ export default function Render() {
   }
 
   const startStream = async () => {
+    console.log("starting capture");
     createWorkers();
 
     await navigator.mediaDevices

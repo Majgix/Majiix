@@ -16,7 +16,7 @@ export const videoEncoderConfig = {
 export const audioEncoderConfig = {
   encoderConfig: {
     codec: "opus",
-    sampleRate: 48000, //Hz
+    sampleRate: 48000, // Hz
     numberOfChannels: 1,
     bitrate: 128000,
   },
