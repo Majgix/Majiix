@@ -56,7 +56,7 @@ export async function moqCreateControlStream(moqt: Moqt): Promise<void> {
 function createMoqSetupMessage(role: number) {
   const messageType = streamWriterEncoder(MOQ_MESSAGE_CLIENT_SETUP);
   const versionLength = streamWriterEncoder(1);
-  const version = streamWriterEncoder(MOQ_DRAFT01_VERSION);
+  const version = streamWriterEncoder(MOQ_DRAFT03_VERSION);
   const numberOfParams = streamWriterEncoder(1);
   const roleParamId = streamWriterEncoder(MOQ_PARAMETER_ROLE);
   const roleParamData = streamWriterEncoder(role);
@@ -77,8 +77,8 @@ export async function parseSetupResponse(readerStream: ReadableStream) {
     throw new Error(`Setup answer must be ${MOQ_MESSAGE_SERVER_SETUP}, got ${type}`);
   }
   ret.version = await streamReaderDecoder(readerStream);
-  if (ret.version !== MOQ_DRAFT01_VERSION) {
-    throw new Error(`version sent from server NOT supported. must be ${MOQ_DRAFT01_VERSION}`);
+  if (!MOQ_SUPPORTED_VERSIONS.includes(ret.version)) {
+    throw new Error(`version sent from server NOT supported. must be ${MOQ_SUPPORTED_VERSIONS}`);
   }
 
   ret.parameters = await readMoqParams(readerStream);
@@ -291,27 +291,27 @@ export function moqSendObjectToWriter (writer: WritableStreamDefaultWriter, trac
 }
 
 export async function moqParseObjectHeader (readerStream: ReadableStream) {
-  const type = await streamReaderDecoder(readerStream)
+  const type = await streamReaderDecoder(readerStream);
   if (type !== MOQ_MESSAGE_OBJECT && type !== MOQ_MESSAGE_OBJECT_WITH_LENGTH) {
     throw new Error(`OBJECT answer type must be ${MOQ_MESSAGE_OBJECT} or ${MOQ_MESSAGE_OBJECT_WITH_LENGTH}, got ${type}`)
   }
 
-  const trackId = await streamReaderDecoder(readerStream)
-  const groupSeq = await streamReaderDecoder(readerStream)
-  const objSeq = await streamReaderDecoder(readerStream)
-  const sendOrder = await streamReaderDecoder(readerStream)
+  const trackId = await streamReaderDecoder(readerStream);
+  const groupSeq = await streamReaderDecoder(readerStream);
+  const objSeq = await streamReaderDecoder(readerStream);
+  const sendOrder = await streamReaderDecoder(readerStream);
    
   const ret: { trackId: number; groupSeq: number; objSeq: number; sendOrder: number; payloadLength?: number } = {
       trackId,
       groupSeq,
       objSeq,
       sendOrder,
-    };
+  };
   
   if (type === MOQ_MESSAGE_OBJECT_WITH_LENGTH) {
-    ret.payloadLength = await streamReaderDecoder(readerStream)
+    ret.payloadLength = await streamReaderDecoder(readerStream);
   }
-  return ret
+  return ret;
 }
 
 // Helpers
@@ -367,7 +367,8 @@ async function moqSendToWriter(writer: WritableStreamDefaultWriter, data: Uint8A
 
 // MoQ definitions
 
-export const MOQ_DRAFT01_VERSION = 0xff000001;
+export const MOQ_DRAFT03_VERSION = 0xff000003;
+export const MOQ_SUPPORTED_VERSIONS = [MOQ_DRAFT03_VERSION];
 
 export const MOQ_PARAMETER_ROLE = 0x0;
 export const MOQ_PARAMETER_AUTHORIZATION_INFO = 0x2;

@@ -24,7 +24,7 @@ export const audioEncoderConfig = {
 };
 
 export const muxerSenderConfig = {
-  urlHostPort: "127.0.0.1",
+  urlHostPort: "127.0.0.1:4443",
   urlPath: "4443",
 
   moqTracks: {

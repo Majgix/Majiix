@@ -5,6 +5,7 @@ const MAX_U14 = Math.pow(2, 14) - 1
 const MAX_U30 = Math.pow(2, 30) - 1
 const MAX_U53 = Number.MAX_SAFE_INTEGER
 
+// Takes an integer and encodes it into a varint
 export function streamWriterEncoder (v: number) {
  if (v <= MAX_U6) {
   return setUint8(v)
@@ -19,12 +20,12 @@ export function streamWriterEncoder (v: number) {
  }
 }
 
+// Reads a stream and decodes it
 export async function streamReaderDecoder(readableStream: ReadableStream) {
   let ret;
   const reader = readableStream.getReader({ mode: 'byob' });
   try {
     let buff: ArrayBufferLike = new ArrayBuffer(8);
-
     // asynchronously read data from a BYOB reader to provided buffer
     buff = await byobReader(reader, buff, 0, 1); 
     // mask the byte, extracting the two most significant bits

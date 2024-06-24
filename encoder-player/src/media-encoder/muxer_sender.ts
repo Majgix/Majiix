@@ -5,20 +5,6 @@ import { LocPackager } from "~/packager/loc_packager";
 console.log("Initiating muxer-sender...");
 let workerState = State.Created;
 
-// Default values
-let inFlightRequests = {
-  audio: {},
-  video: {},
-};
-
-// let urlHostPort: string;
-// let urlPath: string;
-
-const abortController = new AbortController();
-
-// WebTransport data
-//let wTransport: WebTransport | null = null;
-
 interface ChunkData {
   mediaType: string;
   chunk: EncodedAudioChunk | EncodedVideoChunk;
@@ -28,11 +14,22 @@ interface ChunkData {
   metadata: EncodedAudioChunkMetadata | EncodedVideoChunkMetadata;
 }
 
-let tracks = {};
+interface Track {
+  namespace: string,
+  name: string,
+  authInfo: string,
+  id: number,
+  numSubscribers?: number,
+  isHipri: boolean,
+}
 
-let moqPublisherState = {}
+let tracks: Record<string, Track> = {};
+let inFlightRequests: Record<string, Track[]> = {};
+
+let moqPublisherState: Record<number, any> = {}
 
 const moqt = moqCreate();
+const abortController = new AbortController();
 
 self.addEventListener("message", async function (event: MessageEvent) {
   console.log("muxer-sender listening for events!");
@@ -73,13 +70,20 @@ self.addEventListener("message", async function (event: MessageEvent) {
       if ('moqTracks' in event.data.muxerSenderConfig) {
         tracks = event.data.muxerSenderConfig.moqTracks;
       }
+      const errTrackStr = checkTrackData();
+      if (errTrackStr !== '') {
+        console.log("error", errTrackStr);
+        return
+      }
 
       try {
         moqResetState();
         await moqClose(moqt);
 
-        const url = new URL(urlHostPortEp);
-        url.protocol = 'https';
+        // const url = new URL(urlHostPortEp);
+        // url.protocol = 'https';
+        const urlString = `https://${urlHostPortEp}`;
+        const url = new URL(urlString);
 
         moqt.wt = new WebTransport(url.href);
         moqt.wt.closed
@@ -97,7 +101,17 @@ self.addEventListener("message", async function (event: MessageEvent) {
 
         workerState = State.Running;
 
-        await startSubscriptionsLoop(moqt.controlReader, moqt.controlWriter);
+        startSubscriptionsLoop(moqt.controlReader!, moqt.controlWriter!)
+          .then(_ => {
+          console.log('info: receiving subscription loop in control stream')
+          })
+          .catch(err => {
+          if (workerState !== State.Stopped) {
+            throw new Error(`Error in the subscription loop in control stream. Err: ${JSON.stringify(err)}`)
+          } else {
+            console.log(`Info: Exited receiving subscription loop in control stream. Err: ${JSON.stringify(err)}`)
+          }
+         })
       } catch(err) {
         throw new Error(`initializing moq error: ${err}`);
       }
@@ -120,7 +134,7 @@ self.addEventListener("message", async function (event: MessageEvent) {
 
   const chunkData = { mediaType: type, compensatedTs, estimatedDuration, seqId, chunk: event.data.chunk, metadata: event.data.metadata };
 
-  await sendChunkToTransport(chunkData, inFlightRequests[type], tracks[type]);
+  await sendChunkToTransport(chunkData);
 });
 
 async function startSubscriptionsLoop(controlReader: ReadableStream, controlWriter: WritableStream) {
@@ -128,17 +142,20 @@ async function startSubscriptionsLoop(controlReader: ReadableStream, controlWrit
     const subscribe = await moqParseSubscribe(controlReader);
     const track = getTrack(subscribe.namespace, subscribe.trackName);
 
-    if('numSubscribers' in track) {
-      track.numSubscribers++;
-    } else {
-      track.numSubscribers = 1;
+    if (track) {
+      if ('numSubscribers' in track) {
+        track.numSubscribers!++;
+      } else {
+        track.numSubscribers = 1;
+      }
     }
-    await moqSendSubscribeResponse(controlWriter, subscribe.namespace, subscribe.trackName, track.id, 0);
+
+    await moqSendSubscribeResponse(controlWriter, subscribe.namespace, subscribe.trackName, track!.id, 0);
   }
 }
 
 
-async function sendChunkToTransport(chunkData: ChunkData, inFlightRequests: inFlightRequests) {
+async function sendChunkToTransport(chunkData: ChunkData) {
   if (chunkData == null) {
     return;
   }
@@ -165,7 +182,14 @@ async function createSendPromise(packet: LocPackager) {
   if (!(packet.GetData().mediaType in tracks)) {
     throw new Error (`Object mediaType NOT supported (no track found), received ${packet.GetData().mediaType}`);
   }
-  const trackId = tracks[packet.GetData().mediaType].id;
+
+  const trackInfo = tracks[packet.GetData().mediaType];
+
+  if (!trackInfo) {
+    throw new Error(`Track info not found`);
+  }
+
+  const trackId = trackInfo.id;
 
   if (!(trackId in moqPublisherState)) {
     if (packet.GetData().chunkType === 'delta') {
@@ -176,7 +200,7 @@ async function createSendPromise(packet: LocPackager) {
 
   const sendOrder = moqCalculateSendOrder(packet);
 
-  const unistream = await moqt.wt.createUnidirectionalStream({ options: {sendOrder } });
+  const unistream = await moqt.wt.createUnidirectionalStream();
   const uniWriter = unistream.getWriter();
 
   // Group sequence, Using it as a joining point
@@ -188,14 +212,14 @@ async function createSendPromise(packet: LocPackager) {
   const groupSeq = moqPublisherState[trackId].currentGroupSeq;
   const objSeq = moqPublisherState[trackId].currentObjectSeq;
 
-  moqSendObjectToWriter(uniWriter, trackId, groupSeq, sendOrder, packet.ToBytes());
+  moqSendObjectToWriter(uniWriter, trackId, groupSeq, objSeq, sendOrder, packet.ToBytes());
 
   moqPublisherState[trackId].currentObjectSeq++;
 
   const p = uniWriter.close();
-  p.id = packet.GetData().pId;
+  const pId = packet.GetData().pId;
 
-  addToInflight(packet.GetData().mediaType, p);
+  addToInflight(packet.GetData().mediaType, pId);
 
   p.finally(() => {
     removeFromInflight(packet.GetData().mediaType, packet.GetData().pId);
@@ -204,26 +228,38 @@ async function createSendPromise(packet: LocPackager) {
   return p;
 }
 
-function addToInflight(mediaType: string, p: WritableStream) {
-  if (p.id in inFlightRequests[mediaType]) {
-    throw new Error(`Error: id already exists in Inflight`);
+function addToInflight(mediaType: string, p: string) {  
+  const key = `${mediaType}_${p}`;
+ 
+  if (key in inFlightRequests) {
+    throw new Error(`Error: id already exists in inFlight`);
   } else {
-    inFlightRequests[mediaType][p.id] = p;
+    inFlightRequests[key]?.push({ id: p } as unknown as Track);
   }
 }
 
-function removeFromInflight(mediaType: string, id: number) {
-  if (id in inFlightRequests[mediaType]) {
-    delete inFlightRequests[mediaType][id];
+function removeFromInflight(mediaType: string, id: string) {
+  const key = `${mediaType}_${id}`;
+
+  if (key in inFlightRequests) {
+    delete inFlightRequests[key];
   }
+}
+
+function initInflightReqData (tracks: Record<string, Track>){
+  const ret: Record<string, Track[]> = {};
+  for (const [trackType, track] of Object.entries(tracks)) {
+    ret[trackType] = [track];
+  }
+  return ret;
 }
 
 // MOQT
 
 async function moqCreatePublisherSession(moqt: Moqt) {
   // Setup
-  await moqSendSetup(moqt.controlWriter, MOQ_PARAMETER_ROLE_PUBLISHER);
-  const setupResponse = await parseSetupResponse(moqt.controlReader);
+  await moqSendSetup(moqt.controlWriter!, MOQ_PARAMETER_ROLE_PUBLISHER);
+  const setupResponse = await parseSetupResponse(moqt.controlReader!);
   console.log(`Received setup response: ${JSON.stringify(setupResponse)}`);
   if (setupResponse.parameters.role !== MOQ_PARAMETER_ROLE_SUBSCRIBER && setupResponse.parameters.role !== MOQ_PARAMETER_ROLE_BOTH){
     throw new Error(`role not supported. 
@@ -233,11 +269,14 @@ async function moqCreatePublisherSession(moqt: Moqt) {
   }
 
   // Announce
-  const announceNamespaces = [];
+  const announceNamespaces: string[] = [];
   for (const [trackType, trackData] of Object.entries(tracks)) {
     if (!announceNamespaces.includes(trackData.namespace)) {
-      await moqSendAnnounce(moqt.controlWriter, trackData.namespace, trackData.authInfo);
-      const announcResp = await parseAnnounceResponse(moqt.controlReader);
+      await moqSendAnnounce(moqt.controlWriter!, trackData.namespace, trackData.authInfo);
+      const announcResp = await parseAnnounceResponse(moqt.controlReader!);
+
+      console.log(`Received ANNOUNCE response for ${trackData.id}-${trackType}-${trackData.namespace}: ${JSON.stringify(announcResp)}`);
+
       if (trackData.namespace !== announcResp.namespace) {
         throw new Error (`expecting namespace ${trackData.namespace}, got ${JSON.stringify(announcResp)}`);
       }
@@ -258,33 +297,31 @@ function checkTrackData() {
   return '';
 }
 
-function initInflightReqData (tracks: Track) {
-  const ret = {}
-  for (const [trackType] of Object.entries(tracks)) {
-    ret[trackType] = {}
-  }
-  return ret
-}
-
 function moqResetState () {
-  moqPublisherState = {}
+  moqPublisherState = {};
 }
 
-function moqCalculateSendOrder (packet: LocPackager) {
-  // Prioritize:
-  // Audio over video
-  // New over old
+function moqCalculateSendOrder(packet: LocPackager) {
+  const data = packet.GetData();
 
-  let ret = packet.GetData().seqId
-  if (ret < 0) {
+  let ret = data.seqId;
+
+  if (typeof ret === 'undefined' || ret < 0) {
     // Send now
-    ret = Number.MAX_SAFE_INTEGER
+    ret = Number.MAX_SAFE_INTEGER;
   } else {
-    if (tracks[packet.GetData().mediaType].isHipri) {
-      ret = Math.floor(ret + Number.MAX_SAFE_INTEGER / 2)
+    const track = tracks[data.mediaType];
+    
+    if (!track) {
+      throw new Error(`Track with media type '${data.mediaType}' not found.`);
+    }
+
+    if (track.isHipri) {
+      ret = Math.floor(ret + Number.MAX_SAFE_INTEGER / 2);
     }
   }
-  return ret
+
+  return ret;
 }
 
 function createTrackState () {
@@ -303,12 +340,18 @@ function getTrack (namespace: string, trackName: string) {
   return null
 }
 
+
 function getAllInflightRequestsArray() {
-  const arrAudio = Object.values(inFlightRequests.audio);
-  const arrVideo = Object.values(inFlightRequests.video);
-
-  return arrAudio.concat(arrVideo);
+  let ret: Track[] = [];
+  for (const trackType in tracks) {
+    if (inFlightRequests.hasOwnProperty(trackType)) {
+      const track = inFlightRequests[trackType]
+      if (track !== undefined) {
+        ret = ret.concat(track)
+      }
+    }
+  }
+  return ret;
 }
-
 
 export {};
