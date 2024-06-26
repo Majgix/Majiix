@@ -65,7 +65,7 @@ export default function Render() {
         { type: "videoframe", videoframe: videoFrame },
         [videoFrame],
       );
-    // Send to audio encoder if audioframe
+      // Send to audio encoder if audioframe
     } else if (e.data.type === "audioframe") {
       const audioFrame = e.data.data;
 
@@ -118,7 +118,7 @@ export default function Render() {
         muxerSenderWorker?.addEventListener("message", function (e) {
           processWorkerMessage(e);
         });
-        
+
         // Create media stream tracks
         const videoTrack = mediaStream.getVideoTracks()[0];
         const audioTrack = mediaStream.getAudioTracks()[0];
@@ -146,35 +146,40 @@ export default function Render() {
           });
 
           // Transfer the readable stream to the worker
-          videoCaptureWorker?.postMessage({
+          videoCaptureWorker?.postMessage(
+            {
               type: "videostream",
               vstream: videoFrameStream,
-            }, [videoFrameStream],
+            },
+            [videoFrameStream],
           );
-        } if (audioTrack) {
-           // Generate a stream of audio frames
-           const trackProcessor = new MediaStreamTrackProcessor({
-             track: audioTrack,
-           });
+        }
+        if (audioTrack) {
+          // Generate a stream of audio frames
+          const trackProcessor = new MediaStreamTrackProcessor({
+            track: audioTrack,
+          });
 
-           // Build a readable stream
-           const audioFrameStream = trackProcessor.readable;
+          // Build a readable stream
+          const audioFrameStream = trackProcessor.readable;
 
-           //Initialize audio encoder
-           audioEncoderWorker?.postMessage({
-             type: "aencoderini",
-             encoderConfig: audioEncoderConfig.encoderConfig,
-             encoderMaxQueSize: audioEncoderConfig.encoderMaxQueSize,
-           });
+          //Initialize audio encoder
+          audioEncoderWorker?.postMessage({
+            type: "aencoderini",
+            encoderConfig: audioEncoderConfig.encoderConfig,
+            encoderMaxQueSize: audioEncoderConfig.encoderMaxQueSize,
+          });
 
-           // Transfer readable audio stream to the worker
-           audioCaptureWorker?.postMessage({
-               type: "audiostream",
-               astream: audioFrameStream,
-             }, [audioFrameStream],
-           );
+          // Transfer readable audio stream to the worker
+          audioCaptureWorker?.postMessage(
+            {
+              type: "audiostream",
+              astream: audioFrameStream,
+            },
+            [audioFrameStream],
+          );
         } else {
-            console.error("No audio or video track found!");
+          console.error("No audio or video track found!");
         }
       })
       .catch((err) => {

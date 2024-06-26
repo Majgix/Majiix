@@ -1,5 +1,20 @@
 // Handles output formats and streams
-import { MOQ_PARAMETER_ROLE_BOTH, MOQ_PARAMETER_ROLE_PUBLISHER, MOQ_PARAMETER_ROLE_SUBSCRIBER, Moqt, moqClose, moqCreate, moqCreateControlStream, moqParseSubscribe, moqSendAnnounce, moqSendObjectToWriter, moqSendSetup, moqSendSubscribeResponse, parseAnnounceResponse, parseSetupResponse } from "~/utils/moqt";
+import {
+  MOQ_PARAMETER_ROLE_BOTH,
+  MOQ_PARAMETER_ROLE_PUBLISHER,
+  MOQ_PARAMETER_ROLE_SUBSCRIBER,
+  Moqt,
+  moqClose,
+  moqCreate,
+  moqCreateControlStream,
+  moqParseSubscribe,
+  moqSendAnnounce,
+  moqSendObjectToWriter,
+  moqSendSetup,
+  moqSendSubscribeResponse,
+  parseAnnounceResponse,
+  parseSetupResponse,
+} from "~/utils/moqt";
 import { State } from "./utils";
 import { LocPackager } from "~/packager/loc_packager";
 console.log("Initiating muxer-sender...");
@@ -15,18 +30,18 @@ interface ChunkData {
 }
 
 interface Track {
-  namespace: string,
-  name: string,
-  authInfo: string,
-  id: number,
-  numSubscribers?: number,
-  isHipri: boolean,
+  namespace: string;
+  name: string;
+  authInfo: string;
+  id: number;
+  numSubscribers?: number;
+  isHipri: boolean;
 }
 
 let tracks: Record<string, Track> = {};
 let inFlightRequests: Record<string, Track[]> = {};
 
-let moqPublisherState: Record<number, any> = {}
+let moqPublisherState: Record<number, any> = {};
 
 const moqt = moqCreate();
 const abortController = new AbortController();
@@ -61,19 +76,19 @@ self.addEventListener("message", async function (event: MessageEvent) {
         return;
       }
 
-      let urlHostPortEp = '';
+      let urlHostPortEp = "";
 
-      if ('urlHostPort' in event.data.muxerSenderConfig) {
+      if ("urlHostPort" in event.data.muxerSenderConfig) {
         urlHostPortEp = event.data.muxerSenderConfig.urlHostPort;
       }
 
-      if ('moqTracks' in event.data.muxerSenderConfig) {
+      if ("moqTracks" in event.data.muxerSenderConfig) {
         tracks = event.data.muxerSenderConfig.moqTracks;
       }
       const errTrackStr = checkTrackData();
-      if (errTrackStr !== '') {
+      if (errTrackStr !== "") {
         console.log("error", errTrackStr);
-        return
+        return;
       }
 
       try {
@@ -90,7 +105,7 @@ self.addEventListener("message", async function (event: MessageEvent) {
           .then(() => {
             console.log("WebTransport session closed");
           })
-          .catch(error => {
+          .catch((error) => {
             throw new Error(`WT error, closed transport ${error}`);
           });
         await moqt.wt.ready;
@@ -102,17 +117,25 @@ self.addEventListener("message", async function (event: MessageEvent) {
         workerState = State.Running;
 
         startSubscriptionsLoop(moqt.controlReader!, moqt.controlWriter!)
-          .then(_ => {
-          console.log('info: receiving subscription loop in control stream')
+          .then((_) => {
+            console.log("info: receiving subscription loop in control stream");
           })
-          .catch(err => {
-          if (workerState !== State.Stopped) {
-            throw new Error(`Error in the subscription loop in control stream. Err: ${JSON.stringify(err)}`)
-          } else {
-            console.log(`Info: Exited receiving subscription loop in control stream. Err: ${JSON.stringify(err)}`)
-          }
-         })
-      } catch(err) {
+          .catch((err) => {
+            if (workerState !== State.Stopped) {
+              throw new Error(
+                `Error in the subscription loop in control stream. Err: ${JSON.stringify(
+                  err,
+                )}`,
+              );
+            } else {
+              console.log(
+                `Info: Exited receiving subscription loop in control stream. Err: ${JSON.stringify(
+                  err,
+                )}`,
+              );
+            }
+          });
+      } catch (err) {
         throw new Error(`initializing moq error: ${err}`);
       }
 
@@ -124,36 +147,56 @@ self.addEventListener("message", async function (event: MessageEvent) {
     return;
   }
 
-  const compensatedTs = (event.data.compensatedTs === undefined || event.data.compensatedTs < 0) ? 0 : event.data.compensatedTs;
+  const compensatedTs =
+    event.data.compensatedTs === undefined || event.data.compensatedTs < 0
+      ? 0
+      : event.data.compensatedTs;
 
-  const estimatedDuration = (event.data.estimatedDuration === undefined || 
-    event.data.estimatedDuration < 0) ? 
-    event.data.chunk.duration : event.data.estimatedDuration;
+  const estimatedDuration =
+    event.data.estimatedDuration === undefined ||
+    event.data.estimatedDuration < 0
+      ? event.data.chunk.duration
+      : event.data.estimatedDuration;
 
-  const seqId = (event.data.seqId === undefined) ? 0 : event.data.seqId;
+  const seqId = event.data.seqId === undefined ? 0 : event.data.seqId;
 
-  const chunkData = { mediaType: type, compensatedTs, estimatedDuration, seqId, chunk: event.data.chunk, metadata: event.data.metadata };
+  const chunkData = {
+    mediaType: type,
+    compensatedTs,
+    estimatedDuration,
+    seqId,
+    chunk: event.data.chunk,
+    metadata: event.data.metadata,
+  };
 
   await sendChunkToTransport(chunkData);
 });
 
-async function startSubscriptionsLoop(controlReader: ReadableStream, controlWriter: WritableStream) {
+async function startSubscriptionsLoop(
+  controlReader: ReadableStream,
+  controlWriter: WritableStream,
+) {
   while (workerState === State.Running) {
     const subscribe = await moqParseSubscribe(controlReader);
     const track = getTrack(subscribe.namespace, subscribe.trackName);
 
     if (track) {
-      if ('numSubscribers' in track) {
+      if ("numSubscribers" in track) {
         track.numSubscribers!++;
       } else {
         track.numSubscribers = 1;
       }
     }
 
-    await moqSendSubscribeResponse(controlWriter, subscribe.namespace, subscribe.trackName, track!.id, 0);
+    await moqSendSubscribeResponse(
+      controlWriter,
+      subscribe.namespace,
+      subscribe.trackName,
+      track!.id,
+      0,
+    );
   }
 }
-
 
 async function sendChunkToTransport(chunkData: ChunkData) {
   if (chunkData == null) {
@@ -162,17 +205,22 @@ async function sendChunkToTransport(chunkData: ChunkData) {
   return createRequest(chunkData);
 }
 
-
 function createRequest(chunkData: ChunkData) {
-
   let packet = new LocPackager();
   const chunkDataBuffer = new Uint8Array(chunkData.chunk.byteLength);
   chunkData.chunk.copyTo(chunkDataBuffer);
 
-  packet.SetData(chunkData.mediaType, chunkData.compensatedTs, chunkData.estimatedDuration, chunkData.chunk.type, chunkData.seqId, chunkData.metadata, chunkDataBuffer);
+  packet.SetData(
+    chunkData.mediaType,
+    chunkData.compensatedTs,
+    chunkData.estimatedDuration,
+    chunkData.chunk.type,
+    chunkData.seqId,
+    chunkData.metadata,
+    chunkDataBuffer,
+  );
 
   return createSendPromise(packet);
-
 }
 
 async function createSendPromise(packet: LocPackager) {
@@ -180,7 +228,11 @@ async function createSendPromise(packet: LocPackager) {
     throw new Error(`Request not send because transport is not open.`);
   }
   if (!(packet.GetData().mediaType in tracks)) {
-    throw new Error (`Object mediaType NOT supported (no track found), received ${packet.GetData().mediaType}`);
+    throw new Error(
+      `Object mediaType NOT supported (no track found), received ${
+        packet.GetData().mediaType
+      }`,
+    );
   }
 
   const trackInfo = tracks[packet.GetData().mediaType];
@@ -192,10 +244,13 @@ async function createSendPromise(packet: LocPackager) {
   const trackId = trackInfo.id;
 
   if (!(trackId in moqPublisherState)) {
-    if (packet.GetData().chunkType === 'delta') {
-      return { dropped: true, message: `Dropped chunk because first object can not be delta, data: ${packet.GetDataStr()}` };
+    if (packet.GetData().chunkType === "delta") {
+      return {
+        dropped: true,
+        message: `Dropped chunk because first object can not be delta, data: ${packet.GetDataStr()}`,
+      };
     }
-    moqPublisherState[trackId] = createTrackState()
+    moqPublisherState[trackId] = createTrackState();
   }
 
   const sendOrder = moqCalculateSendOrder(packet);
@@ -204,7 +259,7 @@ async function createSendPromise(packet: LocPackager) {
   const uniWriter = unistream.getWriter();
 
   // Group sequence, Using it as a joining point
-  if (packet.GetData().chunkType !== 'delta') {
+  if (packet.GetData().chunkType !== "delta") {
     moqPublisherState[trackId].currentGroupSeq++;
     moqPublisherState[trackId].currentObjectSeq = 0;
   }
@@ -212,7 +267,14 @@ async function createSendPromise(packet: LocPackager) {
   const groupSeq = moqPublisherState[trackId].currentGroupSeq;
   const objSeq = moqPublisherState[trackId].currentObjectSeq;
 
-  moqSendObjectToWriter(uniWriter, trackId, groupSeq, objSeq, sendOrder, packet.ToBytes());
+  moqSendObjectToWriter(
+    uniWriter,
+    trackId,
+    groupSeq,
+    objSeq,
+    sendOrder,
+    packet.ToBytes(),
+  );
 
   moqPublisherState[trackId].currentObjectSeq++;
 
@@ -228,9 +290,9 @@ async function createSendPromise(packet: LocPackager) {
   return p;
 }
 
-function addToInflight(mediaType: string, p: string) {  
+function addToInflight(mediaType: string, p: string) {
   const key = `${mediaType}_${p}`;
- 
+
   if (key in inFlightRequests) {
     throw new Error(`Error: id already exists in inFlight`);
   } else {
@@ -246,7 +308,7 @@ function removeFromInflight(mediaType: string, id: string) {
   }
 }
 
-function initInflightReqData (tracks: Record<string, Track>){
+function initInflightReqData(tracks: Record<string, Track>) {
   const ret: Record<string, Track[]> = {};
   for (const [trackType, track] of Object.entries(tracks)) {
     ret[trackType] = [track];
@@ -261,24 +323,38 @@ async function moqCreatePublisherSession(moqt: Moqt) {
   await moqSendSetup(moqt.controlWriter!, MOQ_PARAMETER_ROLE_PUBLISHER);
   const setupResponse = await parseSetupResponse(moqt.controlReader!);
   console.log(`Received setup response: ${JSON.stringify(setupResponse)}`);
-  if (setupResponse.parameters.role !== MOQ_PARAMETER_ROLE_SUBSCRIBER && setupResponse.parameters.role !== MOQ_PARAMETER_ROLE_BOTH){
+  if (
+    setupResponse.parameters.role !== MOQ_PARAMETER_ROLE_SUBSCRIBER &&
+    setupResponse.parameters.role !== MOQ_PARAMETER_ROLE_BOTH
+  ) {
     throw new Error(`role not supported. 
       Supported  ${MOQ_PARAMETER_ROLE_SUBSCRIBER}, 
-      got from server ${JSON.stringify(setupResponse.parameters.role)}`
-    );
+      got from server ${JSON.stringify(setupResponse.parameters.role)}`);
   }
 
   // Announce
   const announceNamespaces: string[] = [];
   for (const [trackType, trackData] of Object.entries(tracks)) {
     if (!announceNamespaces.includes(trackData.namespace)) {
-      await moqSendAnnounce(moqt.controlWriter!, trackData.namespace, trackData.authInfo);
+      await moqSendAnnounce(
+        moqt.controlWriter!,
+        trackData.namespace,
+        trackData.authInfo,
+      );
       const announcResp = await parseAnnounceResponse(moqt.controlReader!);
 
-      console.log(`Received ANNOUNCE response for ${trackData.id}-${trackType}-${trackData.namespace}: ${JSON.stringify(announcResp)}`);
+      console.log(
+        `Received ANNOUNCE response for ${trackData.id}-${trackType}-${
+          trackData.namespace
+        }: ${JSON.stringify(announcResp)}`,
+      );
 
       if (trackData.namespace !== announcResp.namespace) {
-        throw new Error (`expecting namespace ${trackData.namespace}, got ${JSON.stringify(announcResp)}`);
+        throw new Error(
+          `expecting namespace ${trackData.namespace}, got ${JSON.stringify(
+            announcResp,
+          )}`,
+        );
       }
       announceNamespaces.push(trackData.namespace);
     }
@@ -287,17 +363,21 @@ async function moqCreatePublisherSession(moqt: Moqt) {
 
 function checkTrackData() {
   if (Object.entries(tracks).length <= 0) {
-    return 'Number of Track Ids to announce must be > 0';
+    return "Number of Track Ids to announce must be > 0";
   }
   for (const [, track] of Object.entries(tracks)) {
-    if (!('namespace' in track) || !('name' in track) || !('authInfo' in track)) {
-          return 'Track malformed, needs to contain namespace, name, and authInfo'
+    if (
+      !("namespace" in track) ||
+      !("name" in track) ||
+      !("authInfo" in track)
+    ) {
+      return "Track malformed, needs to contain namespace, name, and authInfo";
     }
   }
-  return '';
+  return "";
 }
 
-function moqResetState () {
+function moqResetState() {
   moqPublisherState = {};
 }
 
@@ -306,12 +386,12 @@ function moqCalculateSendOrder(packet: LocPackager) {
 
   let ret = data.seqId;
 
-  if (typeof ret === 'undefined' || ret < 0) {
+  if (typeof ret === "undefined" || ret < 0) {
     // Send now
     ret = Number.MAX_SAFE_INTEGER;
   } else {
     const track = tracks[data.mediaType];
-    
+
     if (!track) {
       throw new Error(`Track with media type '${data.mediaType}' not found.`);
     }
@@ -324,30 +404,29 @@ function moqCalculateSendOrder(packet: LocPackager) {
   return ret;
 }
 
-function createTrackState () {
+function createTrackState() {
   return {
     currentGroupSeq: 0,
-    currentObjectSeq: 0
-  }
+    currentObjectSeq: 0,
+  };
 }
 
-function getTrack (namespace: string, trackName: string) {
+function getTrack(namespace: string, trackName: string) {
   for (const [, trackData] of Object.entries(tracks)) {
     if (trackData.namespace === namespace && trackData.name === trackName) {
-      return trackData
+      return trackData;
     }
   }
-  return null
+  return null;
 }
-
 
 function getAllInflightRequestsArray() {
   let ret: Track[] = [];
   for (const trackType in tracks) {
     if (inFlightRequests.hasOwnProperty(trackType)) {
-      const track = inFlightRequests[trackType]
+      const track = inFlightRequests[trackType];
       if (track !== undefined) {
-        ret = ret.concat(track)
+        ret = ret.concat(track);
       }
     }
   }

@@ -1,6 +1,6 @@
 // Video encoder config
 export const videoEncoderConfig = {
-  encoderConfig: {    
+  encoderConfig: {
     codec: "av01.0.04M.08", // AV1 Main Profile, Main tier, 10 bits per color
     width: 320,
     height: 180,
@@ -28,23 +28,23 @@ export const muxerSenderConfig = {
   urlPath: "4443",
 
   moqTracks: {
-             "audio": {
-                 id: 0,
-                 namespace: "vc",
-                 name: "aaa/audio",
-                 maxInFlightRequests: 100,
-                 isHipri: true,
-                 authInfo: "secret"
-             },
-             "video": {
-                 id: 1,
-                 namespace: "vc",
-                 name: "aaa/video",
-                 maxInFlightRequests: 50,
-                 isHipri: false,
-                 authInfo: "secret"
-             }
-   }
+    audio: {
+      id: 0,
+      namespace: "vc",
+      name: "aaa/audio",
+      maxInFlightRequests: 100,
+      isHipri: true,
+      authInfo: "secret",
+    },
+    video: {
+      id: 1,
+      namespace: "vc",
+      name: "aaa/video",
+      maxInFlightRequests: 50,
+      isHipri: false,
+      authInfo: "secret",
+    },
+  },
 };
 
 export {};

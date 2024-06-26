@@ -5,7 +5,6 @@ export enum State {
   Stopped = "stopped",
 }
 
-
 export function arrayBufferToBase64(buffer: any) {
   let binary = "";
   const bytes = new Uint8Array(buffer);
@@ -16,6 +15,5 @@ export function arrayBufferToBase64(buffer: any) {
 
   return btoa(binary);
 }
-
 
 export {};

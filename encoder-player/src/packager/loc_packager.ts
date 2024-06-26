@@ -1,14 +1,14 @@
 import { streamReaderDecoder, streamWriterEncoder } from "../utils/stream";
-import { buffRead, readUntilEof, concatBuffer  } from "../utils/buffer_utils";
+import { buffRead, readUntilEof, concatBuffer } from "../utils/buffer_utils";
 
 export class LocPackager {
-  mediaType: string = '';
+  mediaType: string = "";
   timestamp: number = 0;
   duration: number = 0;
-  chunkType: string = '';
+  chunkType: string = "";
   seqId: number = -1;
 
-  pId: string = '';
+  pId: string = "";
   data: any = null;
   metadata: any = null;
 
@@ -21,39 +21,43 @@ export class LocPackager {
     chunkType: string,
     seqId: number,
     metadata: any,
-    data: any
+    data: any,
   ) {
-    const pId = btoa(`${mediaType}-${timestamp}-${chunkType}-${seqId}-${Math.floor(Math.random() * 100000)}`);
-    
-    this.seqId = seqId
+    const pId = btoa(
+      `${mediaType}-${timestamp}-${chunkType}-${seqId}-${Math.floor(
+        Math.random() * 100000,
+      )}`,
+    );
+
+    this.seqId = seqId;
     this.timestamp = timestamp;
 
     this.mediaType = mediaType;
-    this.duration = duration
+    this.duration = duration;
     this.chunkType = chunkType;
 
-    this.pId = pId; 
-    this.metadata = metadata
+    this.pId = pId;
+    this.metadata = metadata;
     this.data = data;
   }
 
-  async ReadBytes (readerStream: ReadableStream) {
+  async ReadBytes(readerStream: ReadableStream) {
     const mediaTypeInt = await streamReaderDecoder(readerStream);
     if (mediaTypeInt === 0) {
-      this.mediaType = 'data';
+      this.mediaType = "data";
     } else if (mediaTypeInt === 1) {
-      this.mediaType = 'audio';
+      this.mediaType = "audio";
     } else if (mediaTypeInt === 2) {
-      this.mediaType = 'video';
+      this.mediaType = "video";
     } else {
       throw new Error(`MediaType ${mediaTypeInt} not supported`);
     }
-    
+
     const chunkTypeInt = await streamReaderDecoder(readerStream);
     if (chunkTypeInt === 0) {
-      this.chunkType = 'delta';
+      this.chunkType = "delta";
     } else if (chunkTypeInt === 1) {
-      this.chunkType = 'key';
+      this.chunkType = "key";
     } else {
       throw new Error(`chunkType ${chunkTypeInt} not supported`);
     }
@@ -67,10 +71,10 @@ export class LocPackager {
     } else {
       this.metadata = null;
     }
-    this.data = await readUntilEof(readerStream, this.READ_BLOCK_SIZE)
+    this.data = await readUntilEof(readerStream, this.READ_BLOCK_SIZE);
   }
 
-  GetData () {
+  GetData() {
     return {
       seqId: this.seqId,
       timestamp: this.timestamp,
@@ -82,32 +86,36 @@ export class LocPackager {
       pId: this.pId, // Internal
 
       data: this.data,
-      metadata: this.metadata
-    }
+      metadata: this.metadata,
+    };
   }
 
-  GetDataStr () {
-    const metadataSize = (this.metadata === undefined || this.metadata == null) ? 0 : this.metadata.byteLength;
-    const dataSize = (this.data === undefined || this.data == null) ? 0 : this.data.byteLength;
+  GetDataStr() {
+    const metadataSize =
+      this.metadata === undefined || this.metadata == null
+        ? 0
+        : this.metadata.byteLength;
+    const dataSize =
+      this.data === undefined || this.data == null ? 0 : this.data.byteLength;
     return `${this.mediaType} - ${this.seqId} - ${this.timestamp} - ${this.duration} - ${this.chunkType} - ${metadataSize} - ${dataSize}`;
   }
 
-  ToBytes () {
+  ToBytes() {
     let mediaTypeBytes: Uint8Array;
-    if (this.mediaType === 'data') {
+    if (this.mediaType === "data") {
       mediaTypeBytes = streamWriterEncoder(0);
-    } else if (this.mediaType === 'audio') {
+    } else if (this.mediaType === "audio") {
       mediaTypeBytes = streamWriterEncoder(1);
-    } else if (this.mediaType === 'video') {
+    } else if (this.mediaType === "video") {
       mediaTypeBytes = streamWriterEncoder(2);
     } else {
-      throw new Error(`Mediatype ${this.mediaType} not supported`)
+      throw new Error(`Mediatype ${this.mediaType} not supported`);
     }
 
     let chunkTypeBytes: Uint8Array;
-    if (this.chunkType === 'delta') {
+    if (this.chunkType === "delta") {
       chunkTypeBytes = streamWriterEncoder(0);
-    } else if (this.chunkType === 'key') {
+    } else if (this.chunkType === "key") {
       chunkTypeBytes = streamWriterEncoder(1);
     } else {
       throw new Error(`chunkType ${this.chunkType} not supported`);
@@ -118,16 +126,35 @@ export class LocPackager {
 
     const durationBytes = streamWriterEncoder(this.duration);
 
-    const metadataSize = (this.metadata === undefined || this.metadata == null) ? 0 : this.metadata.byteLength;
+    const metadataSize =
+      this.metadata === undefined || this.metadata == null
+        ? 0
+        : this.metadata.byteLength;
     const metadataSizeBytes = streamWriterEncoder(metadataSize);
     let ret = null;
     if (metadataSize > 0) {
-      ret = concatBuffer([mediaTypeBytes, chunkTypeBytes, seqIdBytes, timestampBytes, durationBytes, metadataSizeBytes, this.metadata, this.data])
+      ret = concatBuffer([
+        mediaTypeBytes,
+        chunkTypeBytes,
+        seqIdBytes,
+        timestampBytes,
+        durationBytes,
+        metadataSizeBytes,
+        this.metadata,
+        this.data,
+      ]);
     } else {
-      ret = concatBuffer([mediaTypeBytes, chunkTypeBytes, seqIdBytes, timestampBytes, durationBytes, metadataSizeBytes, this.data])
+      ret = concatBuffer([
+        mediaTypeBytes,
+        chunkTypeBytes,
+        seqIdBytes,
+        timestampBytes,
+        durationBytes,
+        metadataSizeBytes,
+        this.data,
+      ]);
     }
-    return ret
+    return ret;
   }
-
 }
- export {}
+export {};
