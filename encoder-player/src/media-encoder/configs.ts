@@ -1,6 +1,6 @@
 // Video encoder config
 export const videoEncoderConfig = {
-  encoderConfig: {    
+  encoderConfig: {
     codec: "av01.0.04M.08", // AV1 Main Profile, Main tier, 10 bits per color
     width: 320,
     height: 180,
@@ -16,7 +16,7 @@ export const videoEncoderConfig = {
 export const audioEncoderConfig = {
   encoderConfig: {
     codec: "opus",
-    sampleRate: 48000, //Hz
+    sampleRate: 48000, // Hz
     numberOfChannels: 1,
     bitrate: 128000,
   },
@@ -24,27 +24,27 @@ export const audioEncoderConfig = {
 };
 
 export const muxerSenderConfig = {
-  urlHostPort: "127.0.0.1",
+  urlHostPort: "127.0.0.1:4443",
   urlPath: "4443",
 
   moqTracks: {
-             "audio": {
-                 id: 0,
-                 namespace: "vc",
-                 name: "aaa/audio",
-                 maxInFlightRequests: 100,
-                 isHipri: true,
-                 authInfo: "secret"
-             },
-             "video": {
-                 id: 1,
-                 namespace: "vc",
-                 name: "aaa/video",
-                 maxInFlightRequests: 50,
-                 isHipri: false,
-                 authInfo: "secret"
-             }
-   }
+    audio: {
+      id: 0,
+      namespace: "vc",
+      name: "aaa/audio",
+      maxInFlightRequests: 100,
+      isHipri: true,
+      authInfo: "secret",
+    },
+    video: {
+      id: 1,
+      namespace: "vc",
+      name: "aaa/video",
+      maxInFlightRequests: 50,
+      isHipri: false,
+      authInfo: "secret",
+    },
+  },
 };
 
 export {};

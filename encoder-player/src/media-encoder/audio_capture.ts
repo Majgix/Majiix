@@ -40,7 +40,7 @@ self.addEventListener("message", async (event: MessageEvent) => {
     case "audiostream":
       const audioFrameStream = data?.audioStream as ReadableStream<AudioData>;
 
-      if(audioFrameStream) {
+      if (audioFrameStream) {
         const audioFrameReader = audioFrameStream.getReader();
         await audioCaptureLoop(audioFrameReader);
       }

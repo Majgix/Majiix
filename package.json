@@ -3,8 +3,8 @@
   "license": "UNLICENSED",
   "private": true,
   "workspaces": [
-    "backend",
-    "frontend"
+    "encoder-player",
+    "moq-server"
   ],
   "packageManager": "yarn@4.0.2",
   "devDependencies": {
