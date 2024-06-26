@@ -15,15 +15,15 @@
   },
   "type": "module",
   "dependencies": {
-      "@solidjs/meta": "^0.28.0",
-      "@solidjs/router": "0.8.4",
-      "@types/dom-mediacapture-transform": "^0.1.9",
-      "@types/dom-webcodecs": "^0.1.11",
-      "hls.js": "1.4.12",
-      "solid-js": "1.8.5",
-      "solid-start": "0.3.1"
-    },
-    "devDependencies": {
+    "@solidjs/meta": "^0.28.0",
+    "@solidjs/router": "0.8.4",
+    "@types/dom-mediacapture-transform": "^0.1.9",
+    "@types/dom-webcodecs": "^0.1.11",
+    "hls.js": "1.4.12",
+    "solid-js": "1.8.5",
+    "solid-start": "0.3.1"
+  },
+  "devDependencies": {
     "@types/node": "20.9.0",
     "esbuild": "0.19.5",
     "postcss": "8.4.31",
@@ -33,7 +33,7 @@
     "vite": "4.5.0",
     "vite-plugin-solid": "2.7.2"
   },
-"resolutions": {
+  "resolutions": {
     "@solidjs/meta": "^0.28.0"
   },
   "engines": {
